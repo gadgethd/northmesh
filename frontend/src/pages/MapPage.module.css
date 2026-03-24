@@ -237,6 +237,11 @@
   font-size: 0.625rem;
 }
 
+/* Hide any MapLibre attribution that leaks through */
+:global(.maplibregl-ctrl-attrib) {
+  display: none !important;
+}
+
 @media (max-width: 640px) {
   .bottomRight {
     width: calc(100% - 32px);
