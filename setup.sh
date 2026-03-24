@@ -9,11 +9,11 @@ NC='\033[0m'
 
 echo -e "${BLUE}"
 cat << 'EOF'
-   _   _                      _ _         
-  / \ | |__ _ _____   ___ _ __( )___  ___ 
+   _   _                      _ _
+  / \ | |__ _ _____   ___ _ __( )___  ___
  / _ \| / _` (_-< _ \/ -_) '_|// _ \/ __|
 /_/ \_\_\__,_/__/\___/\___|_|  \___/\__|
-                                             
+
 EOF
 echo -e "${NC}"
 echo -e "${GREEN}Real-time Mesh Network Visualization${NC}"
@@ -31,7 +31,7 @@ check_command() {
     return 0
 }
 
-echo -e "${YELLOW}[1/6] Checking prerequisites...${NC}"
+echo -e "${YELLOW}[1/7] Checking prerequisites...${NC}"
 echo ""
 
 PREREQ_OK=true
@@ -45,37 +45,40 @@ if ! $PREREQ_OK; then
     exit 1
 fi
 
-if check_command "curl" "https://curl.se/"; then
-    :
-fi
-
 echo ""
-echo -e "${YELLOW}[2/6] Checking .env configuration...${NC}"
+echo -e "${YELLOW}[2/7] Checking .env configuration...${NC}"
 echo ""
 
 if [ ! -f .env ]; then
     echo "No .env file found. Creating from example..."
     cp .env.example .env
     echo -e "${GREEN}✓ Created .env file${NC}"
-    echo ""
-    echo -e "${YELLOW}Please edit .env and add your Cloudflare Tunnel token:${NC}"
-    echo -e "  nano .env"
-    echo ""
-    read -p "Press Enter when you've added your CLOUDFLARE_TUNNEL_TOKEN (or skip for local dev): "
 else
     echo -e "${GREEN}✓ .env file exists${NC}"
 fi
 
-if [ -z "$CLOUDFLARE_TUNNEL_TOKEN" ] && [ -f .env ]; then
-    echo ""
-    echo -e "${YELLOW}Note: CLOUDFLARE_TUNNEL_TOKEN is not set.${NC}"
-    echo "  - For local development, this is fine"
-    echo "  - For production, add your tunnel token to .env"
-    echo ""
+echo ""
+echo -e "${YELLOW}[3/7] Cloudflare Tunnel Setup${NC}"
+echo "============================================"
+echo ""
+echo "If you don't have a tunnel token, create one at:"
+echo "  https://dash.cloudflare.com > Networks > Tunnels"
+echo ""
+read -p "Enter your Cloudflare Tunnel token (or press Enter to skip): " TOKEN
+
+if [ -n "$TOKEN" ]; then
+    if grep -q "CLOUDFLARE_TUNNEL_TOKEN=" .env; then
+        sed -i "s|CLOUDFLARE_TUNNEL_TOKEN=.*|CLOUDFLARE_TUNNEL_TOKEN=$TOKEN|" .env
+    else
+        echo "CLOUDFLARE_TUNNEL_TOKEN=$TOKEN" >> .env
+    fi
+    echo -e "${GREEN}✓ Tunnel token saved to .env${NC}"
+else
+    echo -e "${YELLOW}Skipping tunnel setup (services will run without it)${NC}"
 fi
 
 echo ""
-echo -e "${YELLOW}[3/6] Creating directories...${NC}"
+echo -e "${YELLOW}[4/7] Creating directories...${NC}"
 echo ""
 
 mkdir -p certs
@@ -85,7 +88,7 @@ mkdir -p data
 echo -e "${GREEN}✓ Created data/ directory${NC}"
 
 echo ""
-echo -e "${YELLOW}[4/6] Generating SSL certificates...${NC}"
+echo -e "${YELLOW}[5/7] Generating SSL certificates...${NC}"
 echo ""
 
 if [ -f certs/server.crt ] && [ -f certs/server.key ]; then
@@ -101,14 +104,14 @@ else
 fi
 
 echo ""
-echo -e "${YELLOW}[5/6] Building Docker images...${NC}"
+echo -e "${YELLOW}[6/7] Building Docker images...${NC}"
 echo ""
 
 docker compose build
 echo -e "${GREEN}✓ Build complete${NC}"
 
 echo ""
-echo -e "${YELLOW}[6/6] Starting services...${NC}"
+echo -e "${YELLOW}[7/7] Starting services...${NC}"
 echo ""
 
 docker compose up -d
@@ -120,7 +123,7 @@ echo -e "${GREEN}NorthMesh is starting up!${NC}"
 echo "============================================"
 echo ""
 echo "Services:"
-echo "  - Frontend: http://localhost:3000"
+echo "  - Frontend: http://localhost:8080"
 echo "  - Backend:  http://localhost:3001"
 echo ""
 echo "To check status:"
@@ -130,23 +133,16 @@ echo ""
 echo "To stop:"
 echo "  docker compose down"
 echo ""
-echo "============================================"
-echo ""
 
-if [ -z "$CLOUDFLARE_TUNNEL_TOKEN" ]; then
+if [ -z "$TOKEN" ]; then
     echo -e "${YELLOW}Cloudflare Tunnel not configured.${NC}"
     echo ""
-    echo "To enable Cloudflare Tunnel for https://northmesh.co.uk:"
-    echo ""
-    echo "1. Go to https://dash.cloudflare.com"
-    echo "2. Select your domain"
-    echo "3. Go to Networks > Tunnels"
-    echo "4. Create a new tunnel (Cloudflared)"
-    echo "5. Name it 'northmesh'"
-    echo "6. Add hostname: northmesh.co.uk → https://nginx:443"
-    echo "7. Copy the tunnel token"
-    echo "8. Edit .env and set CLOUDFLARE_TUNNEL_TOKEN=your-token"
-    echo "9. Run: docker compose up -d"
+    echo "To enable HTTPS at northmesh.co.uk:"
+    echo "1. Create tunnel at Cloudflare Dashboard"
+    echo "2. Add hostname: northmesh.co.uk → https://nginx:8080"
+    echo "3. Add hostname: mqtt.northmesh.co.uk → tcp://backend:3001"
+    echo "4. Run: nano .env (add CLOUDFLARE_TUNNEL_TOKEN=...)"
+    echo "5. Run: docker compose up -d"
     echo ""
 fi
 
@@ -163,12 +159,12 @@ for i in {1..10}; do
     sleep 1
 done
 
-if curl -sf http://localhost:3000 &> /dev/null; then
+if curl -sf http://localhost:8080 &> /dev/null; then
     echo -e "${GREEN}✓ Frontend is responding${NC}"
 else
     echo -e "${YELLOW}⚠ Frontend may still be starting${NC}"
 fi
 
 echo ""
-echo -e "${BLUE}All done! Visit http://localhost:3000 to see NorthMesh.${NC}"
+echo -e "${BLUE}All done! Visit http://localhost:8080 to see NorthMesh.${NC}"
 echo ""
