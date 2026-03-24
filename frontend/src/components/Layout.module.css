@@ -98,15 +98,21 @@
   letter-spacing: 0.5px;
 }
 
+.navRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .discordBtn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: 8px;
+  padding: 8px 14px;
   background: #5865F2;
   color: white;
   border-radius: var(--radius-md);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   text-decoration: none;
   transition: all 0.2s ease;
@@ -115,6 +121,7 @@
 .discordBtn:hover {
   background: #4752C4;
   color: white;
+  transform: translateY(-1px);
 }
 
 .main {
@@ -151,6 +158,18 @@
   }
 
   .statusText {
+    display: none;
+  }
+
+  .navRight {
+    gap: 8px;
+  }
+
+  .discordBtn {
+    padding: 8px 10px;
+  }
+
+  .discordBtn span {
     display: none;
   }
 }
