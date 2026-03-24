@@ -36,10 +36,14 @@ const nodes = new Map<string, NodeStatus & { last_seen: number; is_online: boole
 let packets: MeshPacket[] = []
 
 const WINDOW_24H = 24 * 60 * 60 * 1000
+let packetTimestamps: number[] = []
 
 function packets24h(): number {
   const cutoff = Date.now() - WINDOW_24H
-  return packets.filter((p) => p.ts > cutoff).length
+  const i = packetTimestamps.findIndex((ts) => ts > cutoff)
+  if (i > 0) packetTimestamps = packetTimestamps.slice(i)
+  else if (i === -1) packetTimestamps = []
+  return packetTimestamps.length
 }
 
 const mqttBrokerUrl = process.env.MQTT_BROKER_URL || 'wss://mqtt.meshcore.uk:9001'
@@ -52,9 +56,8 @@ const mqtt = new MQTTClient({
 mqtt.on('packet', (data) => {
   const packet = data as MeshPacket
   packets.push(packet)
-  const cutoff = Date.now() - WINDOW_24H
-  packets = packets.filter((p) => p.ts > cutoff)
-  if (packets.length > 10000) packets = packets.slice(-5000)
+  if (packets.length > 1000) packets = packets.slice(-500)
+  packetTimestamps.push(packet.ts)
   wsManager.broadcast({ type: 'packet', data: packet })
 
   const existingNode = nodes.get(packet.rxNodeId)
