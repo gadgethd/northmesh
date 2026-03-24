@@ -12,9 +12,11 @@ export class WebSocketManager {
   private wss: WebSocketServer
   private clients = new Map<string, WSClient>()
   private clientIdCounter = 0
+  private onConnect?: (send: (msg: { type: string; data?: unknown }) => void) => void
 
-  constructor(wss: WebSocketServer) {
+  constructor(wss: WebSocketServer, onConnect?: (send: (msg: { type: string; data?: unknown }) => void) => void) {
     this.wss = wss
+    this.onConnect = onConnect
     this.setup()
   }
 
@@ -52,6 +54,10 @@ export class WebSocketManager {
         type: 'welcome',
         data: { clientId, networks: ['uk/north'] },
       })
+
+      if (this.onConnect) {
+        this.onConnect((msg) => this.send(clientId, msg))
+      }
     })
   }
 

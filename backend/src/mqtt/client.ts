@@ -204,6 +204,7 @@ export class MQTTClient {
 
     this.client.on('connect', () => {
       console.log('[MQTT] Connected')
+      this.emit('connect')
       this.topics.forEach((topic) => {
         this.client?.subscribe(topic, { qos: 0 }, (err) => {
           if (err) {

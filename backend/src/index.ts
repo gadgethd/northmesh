@@ -21,7 +21,15 @@ app.get('/health', (_req, res) => {
 const server = createServer(app)
 
 const wss = new WebSocketServer({ server, path: '/ws' })
-const wsManager = new WebSocketManager(wss)
+const wsManager = new WebSocketManager(wss, (send) => {
+  send({
+    type: 'init',
+    data: {
+      nodes: Array.from(nodes.values()),
+      packets: packets.slice(-100),
+    },
+  })
+})
 
 const nodes = new Map<string, NodeStatus & { last_seen: number; is_online: boolean }>()
 let packets: MeshPacket[] = []
