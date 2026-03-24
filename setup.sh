@@ -168,10 +168,17 @@ echo -e "${GREEN}✓ Services started${NC}"
 
 echo ""
 echo -e "${YELLOW}Waiting for Mosquitto to be ready...${NC}"
-sleep 3
+for i in {1..15}; do
+    if docker compose exec -T mosquitto echo ok &>/dev/null; then
+        break
+    fi
+    echo "  Waiting... ($i/15)"
+    sleep 2
+done
 
 echo "Creating backend MQTT user..."
 docker compose exec -T mosquitto mosquitto_passwd -b /mosquitto/config/passwd backend "$MQTT_PASSWORD"
+docker compose kill -s HUP mosquitto
 echo -e "${GREEN}✓ Backend MQTT user created${NC}"
 
 echo ""

@@ -61,8 +61,7 @@ else
 fi
 
 echo "Reloading Mosquitto configuration..."
-docker compose -f "${SCRIPT_DIR}/docker-compose.yml" exec -T mosquitto \
-    mosquitto_ctrl reload /mosquitto/config/passwd
+docker compose -f "${SCRIPT_DIR}/docker-compose.yml" kill -s HUP mosquitto
 
 echo ""
 echo "============================================"
