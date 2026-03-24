@@ -108,11 +108,7 @@ export const useNodeStore = create<NodeStore>((set) => ({
       },
     })),
 
-  setPackets: (packets) =>
-    set((state) => ({
-      packets: packets.slice(-500),
-      stats: { ...state.stats, packetsToday: packets.length },
-    })),
+  setPackets: (packets) => set({ packets: packets.slice(-500) }),
 
   updateStats: (newStats) =>
     set((state) => ({

@@ -58,9 +58,12 @@ export function useWebSocket() {
   const handleMessage = useCallback((msg: { type: string; data: unknown }) => {
     switch (msg.type) {
       case 'init': {
-        const data = msg.data as { nodes: Node[]; packets: Packet[] }
+        const data = msg.data as { nodes: Node[]; packets: Packet[]; packets_24h?: number }
         setNodes(data.nodes)
         setPackets(data.packets)
+        if (data.packets_24h !== undefined) {
+          useNodeStore.getState().updateStats({ packetsToday: data.packets_24h })
+        }
         break
       }
       case 'node_update': {

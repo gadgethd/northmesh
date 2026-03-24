@@ -27,12 +27,20 @@ const wsManager = new WebSocketManager(wss, (send) => {
     data: {
       nodes: Array.from(nodes.values()),
       packets: packets.slice(-100),
+      packets_24h: packets24h(),
     },
   })
 })
 
 const nodes = new Map<string, NodeStatus & { last_seen: number; is_online: boolean }>()
 let packets: MeshPacket[] = []
+
+const WINDOW_24H = 24 * 60 * 60 * 1000
+
+function packets24h(): number {
+  const cutoff = Date.now() - WINDOW_24H
+  return packets.filter((p) => p.ts > cutoff).length
+}
 
 const mqttBrokerUrl = process.env.MQTT_BROKER_URL || 'wss://mqtt.meshcore.uk:9001'
 
@@ -44,9 +52,9 @@ const mqtt = new MQTTClient({
 mqtt.on('packet', (data) => {
   const packet = data as MeshPacket
   packets.push(packet)
-  if (packets.length > 1000) {
-    packets = packets.slice(-500)
-  }
+  const cutoff = Date.now() - WINDOW_24H
+  packets = packets.filter((p) => p.ts > cutoff)
+  if (packets.length > 10000) packets = packets.slice(-5000)
   wsManager.broadcast({ type: 'packet', data: packet })
 
   const existingNode = nodes.get(packet.rxNodeId)
@@ -82,6 +90,7 @@ mqtt.on('status', (data) => {
       data: {
         nodes: Array.from(nodes.values()),
         packets: packets.slice(-100),
+        packets_24h: packets24h(),
       },
     })
   }
@@ -94,6 +103,7 @@ mqtt.on('connect', () => {
     data: {
       nodes: Array.from(nodes.values()),
       packets: packets.slice(-100),
+      packets_24h: packets24h(),
     },
   })
 })
@@ -106,7 +116,7 @@ mqtt.connect()
 
 setInterval(() => {
   const now = Date.now()
-  nodes.forEach((node, id) => {
+  nodes.forEach((node) => {
     if (now - node.last_seen > 300000) {
       if (node.is_online) {
         node.is_online = false
@@ -114,6 +124,7 @@ setInterval(() => {
       }
     }
   })
+  wsManager.broadcast({ type: 'stats', data: { packets_today: packets24h() } })
 }, 60000)
 
 server.listen(PORT, () => {
