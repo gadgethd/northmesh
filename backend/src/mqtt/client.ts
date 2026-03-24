@@ -108,7 +108,7 @@ export class MQTTClient {
       let lon: number | undefined
       let advertPayload: AdvertPayload | null = null
 
-      if (data.raw && data.packet_type === 4) {
+      if (data.raw && parseInt(data.packet_type) === 4) {
         advertPayload = this.parseAdvertPayload(data.raw)
         if (advertPayload?.appData?.location) {
           lat = advertPayload.appData.location.latitude
@@ -177,6 +177,9 @@ export class MQTTClient {
       }
       this.seenAdverts.set(key, now)
 
+      const lat = data.lat ?? data.latitude ?? undefined
+      const lon = data.lon ?? data.longitude ?? undefined
+
       return {
         node_id: data.origin_id,
         name: data.origin || 'Unknown',
@@ -185,6 +188,8 @@ export class MQTTClient {
         radio: data.radio || '',
         client_version: data.client_version || '',
         stats: data.stats,
+        lat: typeof lat === 'number' ? lat : undefined,
+        lon: typeof lon === 'number' ? lon : undefined,
       }
     } catch {
       return null
@@ -217,6 +222,7 @@ export class MQTTClient {
     })
 
     this.client.on('message', (topic, payload) => {
+      console.log(`[MQTT] ${topic}`, payload.toString().slice(0, 200))
       if (topic.endsWith('/packets')) {
         const result = this.parsePacket(topic, payload)
         if (result) {
