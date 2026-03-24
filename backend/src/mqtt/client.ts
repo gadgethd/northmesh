@@ -196,6 +196,8 @@ export class MQTTClient {
       clientId: `northmesh-${Math.random().toString(36).slice(2, 10)}`,
       keepalive: 60,
       reconnectPeriod: 5000,
+      username: process.env.MQTT_USERNAME || 'backend',
+      password: process.env.MQTT_PASSWORD,
     }
 
     this.client = mqtt.connect(this.broker, options)
