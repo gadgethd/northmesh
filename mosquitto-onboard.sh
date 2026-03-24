@@ -23,25 +23,21 @@ echo ""
 echo "============================================"
 echo ""
 
-if [ -z "$1" ] || [ -z "$2" ]; then
-    echo -e "${YELLOW}Usage: ./mosquitto-onboard.sh <IATA> <public_key>${NC}"
+if [ -z "$1" ]; then
+    echo -e "${YELLOW}Usage: ./mosquitto-onboard.sh <username>${NC}"
     echo ""
-    echo "This script adds a new node with write-only MQTT permissions."
-    echo "The node will only be able to publish to:"
-    echo "  meshcore/{IATA}/{public_key}/packets"
-    echo "  meshcore/{IATA}/{public_key}/status"
+    echo "This script adds a new node with write access to the meshcore topic."
+    echo "Your firmware will handle publishing to the correct subtopics."
     echo ""
-    echo "Example: ./mosquitto-onboard.sh LHR abc123def456..."
+    echo "Example: ./mosquitto-onboard.sh mynode"
     echo ""
     exit 1
 fi
 
-IATA="$1"
-PUBLIC_KEY="$2"
-USERNAME="${IATA}_${PUBLIC_KEY}"
+USERNAME="$1"
 PASSWORD=$(openssl rand -hex 16)
 
-echo -e "${GREEN}Onboarding new node: ${IATA}/${PUBLIC_KEY}${NC}"
+echo -e "${GREEN}Onboarding new node: ${USERNAME}${NC}"
 echo ""
 
 echo "Generating password..."
@@ -56,13 +52,12 @@ echo "Updating ACL file..."
 ACL_FILE="${SCRIPT_DIR}/mosquitto/acl"
 
 if grep -q "^user ${USERNAME}$" "$ACL_FILE" 2>/dev/null; then
-    echo -e "${YELLOW}Node already exists in ACL, skipping...${NC}"
+    echo -e "${YELLOW}User already exists in ACL, skipping...${NC}"
 else
     echo "" >> "$ACL_FILE"
-    echo "# New node: $IATA/$PUBLIC_KEY" >> "$ACL_FILE"
+    echo "# New node: $USERNAME" >> "$ACL_FILE"
     echo "user $USERNAME" >> "$ACL_FILE"
-    echo "topic write meshcore/$IATA/$PUBLIC_KEY/packets" >> "$ACL_FILE"
-    echo "topic write meshcore/$IATA/$PUBLIC_KEY/status" >> "$ACL_FILE"
+    echo "topic write meshcore/#" >> "$ACL_FILE"
 fi
 
 echo "Reloading Mosquitto configuration..."
@@ -75,15 +70,11 @@ echo -e "${GREEN}Node onboarded successfully!${NC}"
 echo "============================================"
 echo ""
 echo "Node credentials:"
-echo "  IATA: ${IATA}"
-echo "  Public Key: ${PUBLIC_KEY}"
-echo "  MQTT Username: ${USERNAME}"
-echo "  MQTT Password: ${PASSWORD}"
+echo "  Username: ${USERNAME}"
+echo "  Password: ${PASSWORD}"
 echo ""
 echo "MQTT broker: mqtt.northmesh.co.uk:443 (WebSocket)"
-echo "Topics:"
-echo "  meshcore/${IATA}/${PUBLIC_KEY}/packets"
-echo "  meshcore/${IATA}/${PUBLIC_KEY}/status"
+echo "Topic: meshcore/# (your firmware handles the rest)"
 echo ""
 echo -e "${YELLOW}IMPORTANT: Save the password now - it cannot be retrieved!${NC}"
 echo ""
