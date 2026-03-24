@@ -177,8 +177,12 @@ export class MQTTClient {
       }
       this.seenAdverts.set(key, now)
 
-      const lat = data.lat ?? data.latitude ?? undefined
-      const lon = data.lon ?? data.longitude ?? undefined
+      // Any node publishing to MQTT is a repeater/gateway by definition
+      // Regular ChatNodes don't connect to MQTT in MeshCore
+      const lat = data.lat ?? data.latitude ?? data.location?.lat ?? data.location?.latitude ?? undefined
+      const lon = data.lon ?? data.longitude ?? data.location?.lon ?? data.location?.longitude ?? undefined
+
+      console.log(`[MQTT] Status keys: ${Object.keys(data).join(', ')}`)
 
       return {
         node_id: data.origin_id,
@@ -188,6 +192,7 @@ export class MQTTClient {
         radio: data.radio || '',
         client_version: data.client_version || '',
         stats: data.stats,
+        role: 2,
         lat: typeof lat === 'number' ? lat : undefined,
         lon: typeof lon === 'number' ? lon : undefined,
       }
@@ -222,7 +227,12 @@ export class MQTTClient {
     })
 
     this.client.on('message', (topic, payload) => {
-      console.log(`[MQTT] ${topic}`, payload.toString().slice(0, 200))
+      try {
+        const parsed = JSON.parse(payload.toString())
+        console.log(`[MQTT] ${topic}`, JSON.stringify(parsed).slice(0, 300))
+      } catch {
+        console.log(`[MQTT] ${topic} (raw)`, payload.toString().slice(0, 200))
+      }
       if (topic.endsWith('/packets')) {
         const result = this.parsePacket(topic, payload)
         if (result) {
