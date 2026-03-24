@@ -65,25 +65,38 @@ generate_password() {
     openssl rand -hex 16
 }
 
-if ! grep -q "POSTGRES_PASSWORD=" .env || grep "POSTGRES_PASSWORD=change" .env > /dev/null; then
+source .env 2>/dev/null || true
+
+if [ -z "$POSTGRES_PASSWORD" ] || [ "$POSTGRES_PASSWORD" = "change" ]; then
     PASSWORD=$(generate_password)
-    sed -i "s|POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$PASSWORD|" .env
+    if grep -q "^POSTGRES_PASSWORD=" .env 2>/dev/null; then
+        sed -i "s|POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$PASSWORD|" .env
+    else
+        echo "POSTGRES_PASSWORD=$PASSWORD" >> .env
+    fi
+    export POSTGRES_PASSWORD=$PASSWORD
     echo -e "${GREEN}✓ Generated POSTGRES_PASSWORD${NC}"
 fi
 
-if ! grep -q "MQTT_PASSWORD=" .env || grep "MQTT_PASSWORD=$" .env > /dev/null; then
+if [ -z "$MQTT_PASSWORD" ]; then
     PASSWORD=$(generate_password)
-    if grep -q "MQTT_PASSWORD=" .env; then
+    if grep -q "^MQTT_PASSWORD=" .env 2>/dev/null; then
         sed -i "s|MQTT_PASSWORD=.*|MQTT_PASSWORD=$PASSWORD|" .env
     else
         echo "MQTT_PASSWORD=$PASSWORD" >> .env
     fi
+    export MQTT_PASSWORD=$PASSWORD
     echo -e "${GREEN}✓ Generated MQTT_PASSWORD${NC}"
 fi
 
-if ! grep -q "JWT_SECRET=" .env || grep "JWT_SECRET=change" .env > /dev/null; then
+if [ -z "$JWT_SECRET" ] || [ "$JWT_SECRET" = "change" ]; then
     SECRET=$(openssl rand -hex 64)
-    sed -i "s|JWT_SECRET=.*|JWT_SECRET=$SECRET|" .env
+    if grep -q "^JWT_SECRET=" .env 2>/dev/null; then
+        sed -i "s|JWT_SECRET=.*|JWT_SECRET=$SECRET|" .env
+    else
+        echo "JWT_SECRET=$SECRET" >> .env
+    fi
+    export JWT_SECRET=$SECRET
     echo -e "${GREEN}✓ Generated JWT_SECRET${NC}"
 fi
 
@@ -147,7 +160,10 @@ echo ""
 echo -e "${YELLOW}[8/8] Starting services...${NC}"
 echo ""
 
+set -a
+source .env
 docker compose up -d
+set +a
 echo -e "${GREEN}✓ Services started${NC}"
 
 echo ""
