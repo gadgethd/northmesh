@@ -9,7 +9,10 @@ import { apiRouter } from './api/index.js'
 const PORT = parseInt(process.env.PORT || '3001', 10)
 
 const app = express()
-app.use(cors())
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+  : []
+app.use(cors({ origin: allowedOrigins.length ? allowedOrigins : true }))
 app.use(express.json())
 
 app.use('/api', apiRouter)

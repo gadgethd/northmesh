@@ -5,7 +5,7 @@ ingress:
   - hostname: northmesh.co.uk
     service: http://nginx:8080
   - hostname: mqtt.northmesh.co.uk
-    service: tcp://mosquitto:9001
+    service: http://mosquitto:9001
   - service: http_status:404
 
 logLevel: info
