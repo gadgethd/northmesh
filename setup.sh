@@ -62,7 +62,7 @@ echo -e "${YELLOW}[3/8] Generating passwords...${NC}"
 echo ""
 
 generate_password() {
-    node -e "console.log(require('crypto').randomBytes(16).toString('hex'))"
+    openssl rand -hex 16
 }
 
 if ! grep -q "POSTGRES_PASSWORD=" .env || grep "POSTGRES_PASSWORD=change" .env > /dev/null; then
@@ -82,7 +82,7 @@ if ! grep -q "MQTT_PASSWORD=" .env || grep "MQTT_PASSWORD=$" .env > /dev/null; t
 fi
 
 if ! grep -q "JWT_SECRET=" .env || grep "JWT_SECRET=change" .env > /dev/null; then
-    SECRET=$(node -e "console.log(require('crypto').randomBytes(64).toString('hex'))")
+    SECRET=$(openssl rand -hex 64)
     sed -i "s|JWT_SECRET=.*|JWT_SECRET=$SECRET|" .env
     echo -e "${GREEN}✓ Generated JWT_SECRET${NC}"
 fi

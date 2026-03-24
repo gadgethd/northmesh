@@ -39,7 +39,7 @@ fi
 IATA="$1"
 PUBLIC_KEY="$2"
 USERNAME="${IATA}_${PUBLIC_KEY}"
-PASSWORD=$(node -e "console.log(require('crypto').randomBytes(16).toString('hex'))")
+PASSWORD=$(openssl rand -hex 16)
 
 echo -e "${GREEN}Onboarding new node: ${IATA}/${PUBLIC_KEY}${NC}"
 echo ""
