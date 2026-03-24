@@ -17,9 +17,62 @@ services:
       dockerfile: Dockerfile
     environment:
       - PORT=${PORT:-3001}
-      - MQTT_BROKER_URL=${MQTT_BROKER_URL:-wss://mqtt.meshcore.uk:9001}
+      - MQTT_BROKER_URL=${MQTT_BROKER_URL:-ws://mosquitto:9001}
+      - MQTT_USERNAME=${MQTT_USERNAME:-backend}
+      - MQTT_PASSWORD=${MQTT_PASSWORD}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://northmesh.co.uk,https://www.northmesh.co.uk}
+      - JWT_SECRET=${JWT_SECRET}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-meshcore}:${POSTGRES_PASSWORD}@timescaledb:5432/${POSTGRES_DB:-meshcore}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+    depends_on:
+      - timescaledb
+      - redis
+      - mosquitto
     restart: unless-stopped
+    networks:
+      - northmesh
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    restart: unless-stopped
+    command: ["postgres", "-c", "max_connections=300"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-meshcore}
+      POSTGRES_USER: ${POSTGRES_USER:-meshcore}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-meshcore} -d ${POSTGRES_DB:-meshcore}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - northmesh
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - northmesh
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto/passwd:/mosquitto/config/passwd:ro
+      - ./mosquitto/acl:/mosquitto/config/acl:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
     networks:
       - northmesh
 
@@ -51,3 +104,9 @@ services:
 networks:
   northmesh:
     driver: bridge
+
+volumes:
+  timescaledb_data:
+  redis_data:
+  mosquitto_data:
+  mosquitto_log:

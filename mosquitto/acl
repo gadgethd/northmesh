@@ -1,0 +1,15 @@
+# NorthMesh Mosquitto ACL
+# Format: user topic
+
+# Backend can read all
+user backend
+topic readwrite meshcore/+/#
+topic readwrite ukmesh/+/#
+topic readwrite meshcore-test/+/#
+topic readwrite #
+
+# Nodes can write their own topics
+user node
+topic write meshcore/+/+/+
+topic write ukmesh/+/+/+
+topic readwrite meshcore-test/+/+/+

@@ -31,7 +31,7 @@ check_command() {
     return 0
 }
 
-echo -e "${YELLOW}[1/7] Checking prerequisites...${NC}"
+echo -e "${YELLOW}[1/8] Checking prerequisites...${NC}"
 echo ""
 
 PREREQ_OK=true
@@ -46,7 +46,7 @@ if ! $PREREQ_OK; then
 fi
 
 echo ""
-echo -e "${YELLOW}[2/7] Checking .env configuration...${NC}"
+echo -e "${YELLOW}[2/8] Checking .env configuration...${NC}"
 echo ""
 
 if [ ! -f .env ]; then
@@ -58,7 +58,37 @@ else
 fi
 
 echo ""
-echo -e "${YELLOW}[3/7] Cloudflare Tunnel Setup${NC}"
+echo -e "${YELLOW}[3/8] Generating passwords...${NC}"
+echo ""
+
+generate_password() {
+    node -e "console.log(require('crypto').randomBytes(16).toString('hex'))"
+}
+
+if ! grep -q "POSTGRES_PASSWORD=" .env || grep "POSTGRES_PASSWORD=change" .env > /dev/null; then
+    PASSWORD=$(generate_password)
+    sed -i "s|POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$PASSWORD|" .env
+    echo -e "${GREEN}✓ Generated POSTGRES_PASSWORD${NC}"
+fi
+
+if ! grep -q "MQTT_PASSWORD=" .env || grep "MQTT_PASSWORD=$" .env > /dev/null; then
+    PASSWORD=$(generate_password)
+    if grep -q "MQTT_PASSWORD=" .env; then
+        sed -i "s|MQTT_PASSWORD=.*|MQTT_PASSWORD=$PASSWORD|" .env
+    else
+        echo "MQTT_PASSWORD=$PASSWORD" >> .env
+    fi
+    echo -e "${GREEN}✓ Generated MQTT_PASSWORD${NC}"
+fi
+
+if ! grep -q "JWT_SECRET=" .env || grep "JWT_SECRET=change" .env > /dev/null; then
+    SECRET=$(node -e "console.log(require('crypto').randomBytes(64).toString('hex'))")
+    sed -i "s|JWT_SECRET=.*|JWT_SECRET=$SECRET|" .env
+    echo -e "${GREEN}✓ Generated JWT_SECRET${NC}"
+fi
+
+echo ""
+echo -e "${YELLOW}[4/8] Cloudflare Tunnel Setup${NC}"
 echo "============================================"
 echo ""
 echo "If you don't have a tunnel token, create one at:"
@@ -74,12 +104,15 @@ if [ -n "$TOKEN" ]; then
     fi
     echo -e "${GREEN}✓ Tunnel token saved to .env${NC}"
 else
-    echo -e "${YELLOW}Skipping tunnel setup (services will run without it)${NC}"
+    echo -e "${YELLOW}Skipping tunnel setup${NC}"
 fi
 
 echo ""
-echo -e "${YELLOW}[4/7] Creating directories...${NC}"
+echo -e "${YELLOW}[5/8] Creating directories...${NC}"
 echo ""
+
+mkdir -p mosquitto/log mosquitto/data
+echo -e "${GREEN}✓ Created mosquitto directories${NC}"
 
 mkdir -p certs
 echo -e "${GREEN}✓ Created certs/ directory${NC}"
@@ -88,7 +121,7 @@ mkdir -p data
 echo -e "${GREEN}✓ Created data/ directory${NC}"
 
 echo ""
-echo -e "${YELLOW}[5/7] Generating SSL certificates...${NC}"
+echo -e "${YELLOW}[6/8] Generating SSL certificates...${NC}"
 echo ""
 
 if [ -f certs/server.crt ] && [ -f certs/server.key ]; then
@@ -104,18 +137,31 @@ else
 fi
 
 echo ""
-echo -e "${YELLOW}[6/7] Building Docker images...${NC}"
+echo -e "${YELLOW}[7/8] Building Docker images...${NC}"
 echo ""
 
 docker compose build
 echo -e "${GREEN}✓ Build complete${NC}"
 
 echo ""
-echo -e "${YELLOW}[7/7] Starting services...${NC}"
+echo -e "${YELLOW}[8/8] Starting services...${NC}"
 echo ""
 
 docker compose up -d
 echo -e "${GREEN}✓ Services started${NC}"
+
+echo ""
+echo "============================================"
+echo -e "${GREEN}Setting up Mosquitto passwords...${NC}"
+echo "============================================"
+echo ""
+
+MQTT_PASSWORD=$(grep MQTT_PASSWORD= .env | cut -d= -f2)
+docker compose exec -T mosquitto mosquitto_passwd -b /mosquitto/config/passwd backend "$MQTT_PASSWORD"
+echo -e "${GREEN}✓ Mosquitto password set${NC}"
+
+docker compose restart mosquitto
+echo -e "${GREEN}✓ Mosquitto restarted${NC}"
 
 echo ""
 echo "============================================"
@@ -139,7 +185,7 @@ if [ -z "$TOKEN" ]; then
     echo ""
     echo "To enable HTTPS at northmesh.co.uk:"
     echo "1. Create tunnel at Cloudflare Dashboard"
-    echo "2. Add hostname: northmesh.co.uk → https://nginx:8080"
+    echo "2. Add hostname: northmesh.co.uk → http://nginx:8080"
     echo "3. Add hostname: mqtt.northmesh.co.uk → tcp://backend:3001"
     echo "4. Run: nano .env (add CLOUDFLARE_TUNNEL_TOKEN=...)"
     echo "5. Run: docker compose up -d"
