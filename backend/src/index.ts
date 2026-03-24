@@ -30,7 +30,7 @@ const mqttBrokerUrl = process.env.MQTT_BROKER_URL || 'wss://mqtt.meshcore.uk:900
 
 const mqtt = new MQTTClient({
   broker: mqttBrokerUrl,
-  topics: ['meshcore/uk/north/#', 'ukmesh/uk/north/#'],
+  topics: ['meshcore/+/+/packets', 'meshcore/+/+/status', 'ukmesh/+/+/packets', 'ukmesh/+/+/status'],
 })
 
 mqtt.on('packet', (data) => {
@@ -41,15 +41,11 @@ mqtt.on('packet', (data) => {
   }
   wsManager.broadcast({ type: 'packet', data: packet })
 
-  if (packet.lat && packet.lon) {
-    const existingNode = nodes.get(packet.srcNodeId)
-    if (existingNode) {
-      existingNode.lat = packet.lat
-      existingNode.lon = packet.lon
-      existingNode.last_seen = packet.ts
-      existingNode.is_online = true
-      wsManager.broadcast({ type: 'node_update', data: existingNode })
-    }
+  const existingNode = nodes.get(packet.rxNodeId)
+  if (existingNode) {
+    existingNode.last_seen = packet.ts
+    existingNode.is_online = true
+    wsManager.broadcast({ type: 'node_update', data: existingNode })
   }
 })
 
