@@ -108,11 +108,19 @@ export class MQTTClient {
       let lon: number | undefined
       let advertPayload: AdvertPayload | null = null
 
-      if (data.raw && parseInt(data.packet_type) === 4) {
-        advertPayload = this.parseAdvertPayload(data.raw)
-        if (advertPayload?.appData?.location) {
-          lat = advertPayload.appData.location.latitude
-          lon = advertPayload.appData.location.longitude
+      if (parseInt(data.packet_type) === 4) {
+        // Try parsing binary advert payload first
+        if (data.raw) {
+          advertPayload = this.parseAdvertPayload(data.raw)
+          if (advertPayload?.appData?.location) {
+            lat = advertPayload.appData.location.latitude
+            lon = advertPayload.appData.location.longitude
+          }
+        }
+        // Fall back to coordinates directly in the packet JSON
+        if (lat === undefined) {
+          lat = data.lat ?? data.latitude ?? data.advert?.lat ?? data.location?.lat ?? undefined
+          lon = data.lon ?? data.longitude ?? data.advert?.lon ?? data.location?.lon ?? undefined
         }
       }
 
@@ -146,12 +154,21 @@ export class MQTTClient {
           lat: advertPayload.appData.location.latitude,
           lon: advertPayload.appData.location.longitude,
         }
+      } else if (data.origin_id && parseInt(data.packet_type) === 4) {
+        // Advert from this node — match by public key, set role=2
+        nodeUpdate = {
+          node_id: data.origin_id,
+          name: data.origin || data.name || data.origin_id.slice(0, 8),
+          role: data.role ?? data.device_role ?? 2,
+          lat,
+          lon,
+        }
       } else if (data.origin && data.origin_id) {
         nodeUpdate = {
           node_id: data.origin_id,
           name: data.origin,
-          lat: lat,
-          lon: lon,
+          lat,
+          lon,
         }
       }
 
