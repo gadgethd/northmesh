@@ -1,15 +1,12 @@
 # NorthMesh Mosquitto ACL
 # Format: user topic
+#
+# Topic structure: meshcore/<IATA>/<public_key>/<type>
+# Types: packets, status
 
 # Backend can read all
 user backend
-topic readwrite meshcore/+/#
-topic readwrite ukmesh/+/#
-topic readwrite meshcore-test/+/#
+topic readwrite meshcore/+/+/#
+topic readwrite ukmesh/+/+/#
+topic readwrite meshcore-test/+/+/#
 topic readwrite #
-
-# Nodes can write their own topics
-user node
-topic write meshcore/+/+/+
-topic write ukmesh/+/+/+
-topic readwrite meshcore-test/+/+/+

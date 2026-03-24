@@ -152,19 +152,6 @@ echo -e "${GREEN}✓ Services started${NC}"
 
 echo ""
 echo "============================================"
-echo -e "${GREEN}Setting up Mosquitto passwords...${NC}"
-echo "============================================"
-echo ""
-
-MQTT_PASSWORD=$(grep MQTT_PASSWORD= .env | cut -d= -f2)
-docker compose exec -T mosquitto mosquitto_passwd -b /mosquitto/config/passwd backend "$MQTT_PASSWORD"
-echo -e "${GREEN}✓ Mosquitto password set${NC}"
-
-docker compose restart mosquitto
-echo -e "${GREEN}✓ Mosquitto restarted${NC}"
-
-echo ""
-echo "============================================"
 echo -e "${GREEN}NorthMesh is starting up!${NC}"
 echo "============================================"
 echo ""

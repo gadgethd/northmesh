@@ -1,5 +1,6 @@
 import { Link, useLocation, Outlet } from 'react-router-dom'
 import { useWebSocket } from '../hooks/useWebSocket'
+import { MessageCircle } from 'lucide-react'
 import styles from './Layout.module.css'
 
 export default function Layout() {
@@ -51,6 +52,16 @@ export default function Layout() {
               {isConnected ? 'Live' : 'Offline'}
             </span>
           </div>
+
+          <a
+            href="https://discord.gg/gPfcajjhxP"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.discordBtn}
+          >
+            <MessageCircle size={16} />
+            Discord
+          </a>
         </div>
       </nav>
 
