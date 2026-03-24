@@ -3,9 +3,12 @@ FROM node:20-alpine
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci
 
-COPY dist ./dist
+COPY tsconfig.json ./
+COPY src ./src
+
+RUN npm run build
 
 EXPOSE 3001
 
