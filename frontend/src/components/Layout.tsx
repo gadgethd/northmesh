@@ -76,7 +76,7 @@ export default function Layout() {
         <div className={styles.footerContent}>
           <p>NorthMesh — Connecting the North, One Node at a Time</p>
           <p className={styles.footerMuted}>
-            Powered by MeshCore • Cloudflare Tunnel
+            Powered by MeshCore
           </p>
         </div>
       </footer>
