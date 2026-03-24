@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      - VITE_WS_URL=wss://${HOST:-northmesh.co.uk}/ws
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - northmesh
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - PORT=3001
+      - MQTT_BROKER=${MQTT_BROKER:-mqtt.meshcore.uk}
+      - MQTT_PORT=${MQTT_PORT:-8883}
+      - MQTT_TLS=${MQTT_TLS:-true}
+    restart: unless-stopped
+    networks:
+      - northmesh
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:8443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+    networks:
+      - northmesh
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    restart: unless-stopped
+    networks:
+      - northmesh
+    depends_on:
+      - nginx
+
+networks:
+  northmesh:
+    driver: bridge

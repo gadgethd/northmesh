@@ -1,0 +1,137 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: rgba(6, 10, 18, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+
+.navContent {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+}
+
+.logo:hover {
+  color: var(--text-primary);
+}
+
+.navLinks {
+  display: flex;
+  gap: 8px;
+}
+
+.navLink {
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+
+.navLink:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.navLink.active {
+  color: var(--accent-aurora);
+  background: rgba(0, 229, 204, 0.1);
+}
+
+.statusIndicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--bg-panel);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.statusDot.connected {
+  background: var(--accent-green);
+  box-shadow: 0 0 8px var(--accent-green);
+}
+
+.statusDot.disconnected {
+  background: var(--text-muted);
+  animation: none;
+}
+
+.statusText {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.main {
+  flex: 1;
+  margin-top: 64px;
+}
+
+.footer {
+  border-top: 1px solid var(--border);
+  background: var(--bg-panel);
+  padding: 32px 24px;
+}
+
+.footerContent {
+  max-width: 1400px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.footerContent p {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.footerMuted {
+  margin-top: 4px;
+  font-size: 0.75rem !important;
+  color: var(--text-dim) !important;
+}
+
+@media (max-width: 640px) {
+  .navLinks {
+    display: none;
+  }
+
+  .statusText {
+    display: none;
+  }
+}

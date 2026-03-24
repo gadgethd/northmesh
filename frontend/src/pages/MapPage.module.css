@@ -1,0 +1,246 @@
+.page {
+  position: relative;
+  height: calc(100vh - 64px);
+  width: 100%;
+}
+
+.mapContainer {
+  position: absolute;
+  inset: 0;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  padding: 16px;
+}
+
+.overlay > * {
+  pointer-events: auto;
+}
+
+.topLeft {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+}
+
+.topRight {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.bottomLeft {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.bottomLeft.hidden {
+  opacity: 0;
+  transform: translateX(-20px);
+  pointer-events: none;
+}
+
+.bottomRight {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  width: 320px;
+}
+
+.panel {
+  background: rgba(12, 18, 32, 0.9);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-lg);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.panelTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.networkInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nodeCount {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent-aurora);
+}
+
+.packetCount {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.closeBtn {
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+
+.closeBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.legendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.legendDot.offline {
+  background: #6b7280;
+  opacity: 0.5;
+}
+
+.legendToggle {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(12, 18, 32, 0.9);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+
+.legendToggle:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.iconBtn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(12, 18, 32, 0.9);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+
+.iconBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.nodeDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nodeHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.roleBadge {
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--bg-void);
+}
+
+.nodeName {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+}
+
+.detailLabel {
+  color: var(--text-muted);
+}
+
+.statusBadge {
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.statusBadge.online {
+  background: rgba(52, 245, 160, 0.2);
+  color: var(--accent-green);
+}
+
+.statusBadge.offline {
+  background: rgba(107, 114, 128, 0.2);
+  color: var(--text-muted);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+}
+
+@media (max-width: 640px) {
+  .bottomRight {
+    width: calc(100% - 32px);
+    left: 16px;
+    right: 16px;
+  }
+}
