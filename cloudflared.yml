@@ -3,9 +3,7 @@ credentials-file: /etc/cloudflared/credentials.json
 
 ingress:
   - hostname: northmesh.co.uk
-    service: https://nginx:8080
-    originRequest:
-      noTLSVerify: true
+    service: http://nginx:8080
   - hostname: mqtt.northmesh.co.uk
     service: tcp://backend:3001
   - service: http_status:404
