@@ -79,7 +79,7 @@ export default function MapPage() {
           ],
           'circle-opacity': [
             'case',
-            ['get', 'is_stale'], 0.4,
+            ['!', ['get', 'is_online']], 0.4,
             1
           ],
           'circle-stroke-width': 2,
@@ -118,7 +118,7 @@ export default function MapPage() {
     if (!map.current || !map.current.isStyleLoaded()) return
 
     const features = Array.from(nodes.values())
-      .filter((node) => node.lat !== undefined && node.lon !== undefined)
+      .filter((node) => node.role === 2 && node.lat !== undefined && node.lon !== undefined)
       .map((node) => ({
         type: 'Feature' as const,
         geometry: {
@@ -161,7 +161,9 @@ export default function MapPage() {
           <div className={styles.panel}>
             <h3 className={styles.panelTitle}>NorthMesh Live</h3>
             <div className={styles.networkInfo}>
-              <span className={styles.nodeCount}>{nodes.size} nodes</span>
+              <span className={styles.nodeCount}>
+                {Array.from(nodes.values()).filter((n) => n.role === 2).length} repeaters
+              </span>
               <span className={styles.packetCount}>{packets.length} packets tracked</span>
             </div>
           </div>
@@ -192,18 +194,13 @@ export default function MapPage() {
               </button>
             </div>
             <div className={styles.legend}>
-              {Object.entries(ROLE_LABELS).map(([role, label]) => (
-                <div key={role} className={styles.legendItem}>
-                  <span
-                    className={styles.legendDot}
-                    style={{ background: ROLE_COLORS[Number(role)] }}
-                  />
-                  <span>{label}</span>
-                </div>
-              ))}
+              <div className={styles.legendItem}>
+                <span className={styles.legendDot} style={{ background: ROLE_COLORS[2] }} />
+                <span>Repeater</span>
+              </div>
               <div className={styles.legendItem}>
                 <span className={`${styles.legendDot} ${styles.offline}`} />
-                <span>Offline/Stale</span>
+                <span>Offline</span>
               </div>
             </div>
           </div>
