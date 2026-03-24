@@ -89,91 +89,91 @@ export class MQTTClient {
       const parts = topic.split('/')
       if (parts.length < 4) return null
 
-      const observerKey = parts[2]
       const data = JSON.parse(payload.toString())
-      
-      const packetHash = data.hash || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-      const key = `${packetHash}-${observerKey}`
+      const inner = data.payload || {}
+
+      const rxNodeId: string = data.rx_node_id || parts[2]
+      const srcNodeId: string = data.src_node_id || inner.origin_id || ''
+      const packetHash: string = data.packet_hash || data.hash || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+      const packetType: number = parseInt(data.packet_type) || 0
       const now = Date.now()
 
+      const key = `${packetHash}-${rxNodeId}`
       if (this.seenPackets.has(key)) {
-        const lastSeen = this.seenPackets.get(key)!
-        if (now - lastSeen < 120000) {
-          return null
-        }
+        if (now - this.seenPackets.get(key)! < 120000) return null
       }
       this.seenPackets.set(key, now)
 
+      // Timestamp: inner payload has ISO string, fall back to now
+      const ts = inner.timestamp ? new Date(inner.timestamp).getTime() : now
+
+      // Parse advert binary for location — raw bytes are in inner.raw or data.raw_hex
       let lat: number | undefined
       let lon: number | undefined
       let advertPayload: AdvertPayload | null = null
 
-      if (parseInt(data.packet_type) === 4) {
-        // Try parsing binary advert payload first
-        if (data.raw) {
-          advertPayload = this.parseAdvertPayload(data.raw)
-          if (advertPayload?.appData?.location) {
-            lat = advertPayload.appData.location.latitude
-            lon = advertPayload.appData.location.longitude
-          }
-        }
-        // Fall back to coordinates directly in the packet JSON
-        if (lat === undefined) {
-          lat = data.lat ?? data.latitude ?? data.advert?.lat ?? data.location?.lat ?? undefined
-          lon = data.lon ?? data.longitude ?? data.advert?.lon ?? data.location?.lon ?? undefined
+      const rawHex: string | undefined = inner.raw || data.raw_hex
+      if (rawHex) {
+        advertPayload = this.parseAdvertPayload(rawHex)
+        if (advertPayload?.appData?.location) {
+          lat = advertPayload.appData.location.latitude
+          lon = advertPayload.appData.location.longitude
         }
       }
 
       const packet: MeshPacket = {
-        id: `${observerKey}-${data.timestamp || now}-${Math.random().toString(36).slice(2, 8)}`,
+        id: `${rxNodeId}-${ts}-${Math.random().toString(36).slice(2, 8)}`,
         packetHash,
-        rxNodeId: observerKey,
-        srcNodeId: data.origin_id || advertPayload?.publicKey || '',
+        rxNodeId,
+        srcNodeId,
         topic,
-        packetType: parseInt(data.packet_type) || 0,
-        routeType: parseInt(data.route) || 0,
-        hopCount: (data.path ? data.path.length : 0),
-        rssi: parseFloat(data.rssi) || 0,
-        snr: parseFloat(data.snr) || 0,
-        direction: data.direction === 'rx' ? 'rx' : 'tx',
-        summary: data.origin || '',
+        packetType,
+        routeType: data.route_type ?? 0,
+        hopCount: data.hop_count ?? 0,
+        rssi: data.rssi ?? 0,
+        snr: data.snr ?? 0,
+        direction: inner.direction === 'rx' ? 'rx' : 'tx',
+        summary: inner.origin || srcNodeId.slice(0, 8),
         payload: data,
-        path: data.path,
-        advertCount: data.advert_count ? parseInt(data.advert_count) : undefined,
-        ts: data.timestamp ? parseInt(data.timestamp) * 1000 : now,
+        path: data.path_hashes ?? [],
+        advertCount: data.advert_count ?? undefined,
+        ts,
         lat,
         lon,
       }
 
+      // Build node update: self-advert is when src === rx (the repeater is advertising itself)
       let nodeUpdate: NodeStatus | undefined
       if (advertPayload) {
         nodeUpdate = {
           node_id: advertPayload.publicKey,
           name: advertPayload.appData.name,
           role: advertPayload.appData.deviceRole,
-          lat: advertPayload.appData.location.latitude,
-          lon: advertPayload.appData.location.longitude,
-        }
-      } else if (data.origin_id && parseInt(data.packet_type) === 4) {
-        // Advert from this node — match by public key, set role=2
-        nodeUpdate = {
-          node_id: data.origin_id,
-          name: data.origin || data.name || data.origin_id.slice(0, 8),
-          role: data.role ?? data.device_role ?? 2,
           lat,
           lon,
         }
-      } else if (data.origin && data.origin_id) {
+      } else if (rxNodeId && rxNodeId === srcNodeId) {
+        // Self-advert: the observer IS the source — this is the repeater's own beacon
         nodeUpdate = {
-          node_id: data.origin_id,
-          name: data.origin,
+          node_id: rxNodeId,
+          name: inner.origin || rxNodeId.slice(0, 8),
+          role: 2,
+          lat,
+          lon,
+        }
+        console.log(`[MQTT] Self-advert from ${inner.origin || rxNodeId} raw: ${rawHex?.slice(0, 60)}`)
+      } else if (inner.origin_id) {
+        nodeUpdate = {
+          node_id: inner.origin_id,
+          name: inner.origin || inner.origin_id.slice(0, 8),
           lat,
           lon,
         }
       }
 
       return { packet, nodeUpdate }
-    } catch {
+    } catch (e) {
+      console.error('[MQTT] parsePacket error:', e)
       return null
     }
   }
@@ -184,31 +184,30 @@ export class MQTTClient {
       if (parts.length < 4) return null
 
       const data = JSON.parse(payload.toString())
+      // Status may have data at top level or nested under payload
+      const inner = data.payload || data
 
-      const key = `${data.origin_id}-${data.origin}`
+      console.log(`[MQTT] Status keys: ${Object.keys(data).join(', ')} | inner keys: ${Object.keys(inner).join(', ')}`)
+
+      const nodeId = inner.origin_id || data.rx_node_id || parts[2]
+      const name = inner.origin || inner.name || 'Unknown'
+
+      const key = `${nodeId}-${name}`
       const now = Date.now()
-      const lastSeen = this.seenAdverts.get(key)
-
-      if (lastSeen && now - lastSeen < 60000) {
-        return null
-      }
+      if (this.seenAdverts.has(key) && now - this.seenAdverts.get(key)! < 60000) return null
       this.seenAdverts.set(key, now)
 
-      // Any node publishing to MQTT is a repeater/gateway by definition
-      // Regular ChatNodes don't connect to MQTT in MeshCore
-      const lat = data.lat ?? data.latitude ?? data.location?.lat ?? data.location?.latitude ?? undefined
-      const lon = data.lon ?? data.longitude ?? data.location?.lon ?? data.location?.longitude ?? undefined
-
-      console.log(`[MQTT] Status keys: ${Object.keys(data).join(', ')}`)
+      const lat = inner.lat ?? inner.latitude ?? inner.location?.lat ?? inner.location?.latitude ?? undefined
+      const lon = inner.lon ?? inner.longitude ?? inner.location?.lon ?? inner.location?.longitude ?? undefined
 
       return {
-        node_id: data.origin_id,
-        name: data.origin || 'Unknown',
-        model: data.model || '',
-        firmware_version: data.firmware_version || '',
-        radio: data.radio || '',
-        client_version: data.client_version || '',
-        stats: data.stats,
+        node_id: nodeId,
+        name,
+        model: inner.model || '',
+        firmware_version: inner.firmware_version || '',
+        radio: inner.radio || '',
+        client_version: inner.client_version || '',
+        stats: inner.stats,
         role: 2,
         lat: typeof lat === 'number' ? lat : undefined,
         lon: typeof lon === 'number' ? lon : undefined,
