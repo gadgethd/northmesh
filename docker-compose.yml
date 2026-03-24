@@ -16,10 +16,9 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      - PORT=3001
-      - MQTT_BROKER=${MQTT_BROKER:-mqtt.meshcore.uk}
-      - MQTT_PORT=${MQTT_PORT:-8883}
-      - MQTT_TLS=${MQTT_TLS:-true}
+      - PORT=${PORT:-3001}
+      - MQTT_BROKER_URL=${MQTT_BROKER_URL:-wss://mqtt.meshcore.uk:9001}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://northmesh.co.uk,https://www.northmesh.co.uk}
     restart: unless-stopped
     networks:
       - northmesh

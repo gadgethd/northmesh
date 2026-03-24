@@ -60,24 +60,18 @@ export interface AdvertPayload {
 
 interface MQTTClientOptions {
   broker: string
-  port: number
-  tls: boolean
   topics: string[]
 }
 
 export class MQTTClient {
   private client: MqttClient | null = null
   private broker: string
-  private port: number
-  private tls: boolean
   private topics: string[]
   private seenPackets = new Map<string, number>()
   private seenAdverts = new Map<string, number>()
 
   constructor(options: MQTTClientOptions) {
     this.broker = options.broker
-    this.port = options.port
-    this.tls = options.tls
     this.topics = options.topics
   }
 
@@ -95,10 +89,7 @@ export class MQTTClient {
       const parts = topic.split('/')
       if (parts.length < 4) return null
 
-      const prefix = parts[0]
-      const region = parts[1]
       const observerKey = parts[2]
-
       const data = JSON.parse(payload.toString())
       
       const packetHash = data.hash || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -202,16 +193,12 @@ export class MQTTClient {
 
   connect() {
     const options: IClientOptions = {
-      port: this.port,
-      host: this.broker,
-      protocol: this.tls ? 'mqtts' : 'mqtt',
-      rejectUnauthorized: false,
       clientId: `northmesh-${Math.random().toString(36).slice(2, 10)}`,
       keepalive: 60,
       reconnectPeriod: 5000,
     }
 
-    this.client = mqtt.connect(options)
+    this.client = mqtt.connect(this.broker, options)
 
     this.client.on('connect', () => {
       console.log('[MQTT] Connected')

@@ -26,14 +26,10 @@ const wsManager = new WebSocketManager(wss)
 const nodes = new Map<string, NodeStatus & { last_seen: number; is_online: boolean }>()
 let packets: MeshPacket[] = []
 
-const mqttBroker = process.env.MQTT_BROKER || 'mqtt.meshcore.uk'
-const mqttPort = parseInt(process.env.MQTT_PORT || '8883', 10)
-const mqttTLS = process.env.MQTT_TLS !== 'false'
+const mqttBrokerUrl = process.env.MQTT_BROKER_URL || 'wss://mqtt.meshcore.uk:9001'
 
 const mqtt = new MQTTClient({
-  broker: mqttBroker,
-  port: mqttPort,
-  tls: mqttTLS,
+  broker: mqttBrokerUrl,
   topics: ['meshcore/uk/north/#', 'ukmesh/uk/north/#'],
 })
 
@@ -118,7 +114,7 @@ setInterval(() => {
 
 server.listen(PORT, () => {
   console.log(`[Server] Running on port ${PORT}`)
-  console.log(`[MQTT] Connecting to ${mqttBroker}:${mqttPort} (TLS: ${mqttTLS})`)
+  console.log(`[MQTT] Connecting to ${mqttBrokerUrl}`)
 })
 
 process.on('SIGTERM', () => {
