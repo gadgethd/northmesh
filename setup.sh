@@ -167,6 +167,14 @@ set +a
 echo -e "${GREEN}✓ Services started${NC}"
 
 echo ""
+echo -e "${YELLOW}Waiting for Mosquitto to be ready...${NC}"
+sleep 3
+
+echo "Creating backend MQTT user..."
+docker compose exec -T mosquitto mosquitto_passwd -b /mosquitto/config/passwd backend "$MQTT_PASSWORD"
+echo -e "${GREEN}✓ Backend MQTT user created${NC}"
+
+echo ""
 echo "============================================"
 echo -e "${GREEN}NorthMesh is starting up!${NC}"
 echo "============================================"
