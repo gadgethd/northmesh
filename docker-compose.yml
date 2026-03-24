@@ -30,7 +30,6 @@ services:
       dockerfile: nginx.Dockerfile
     ports:
       - "8080:8080"
-      - "8443:8443"
     depends_on:
       - frontend
       - backend
@@ -40,12 +39,15 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:latest
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    volumes:
+      - ./cloudflared.yml:/etc/cloudflared/config.yml:ro
+    command: tunnel --no-autoupdate run --config /etc/cloudflared/config.yml
     restart: unless-stopped
     networks:
       - northmesh
     depends_on:
       - nginx
+      - backend
 
 networks:
   northmesh:

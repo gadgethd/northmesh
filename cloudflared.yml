@@ -1,0 +1,14 @@
+tunnel: northmesh
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: northmesh.co.uk
+    service: https://nginx:8443
+    originRequest:
+      noTLSVerify: true
+  - hostname: mqtt.northmesh.co.uk
+    service: tcp://backend:3001
+  - service: http_status:404
+
+logLevel: info
+transport-loglevel: info
