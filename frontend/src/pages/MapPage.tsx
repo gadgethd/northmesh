@@ -47,6 +47,9 @@ export default function MapPage() {
 
   const { nodes, packets } = useNodeStore()
   const selectedCoordinates = selectedNode ? formatCoordinates(selectedNode.lat, selectedNode.lon) : null
+  const mappableNodeCount = Array.from(nodes.values()).filter(
+    (node) => node.lat !== undefined && node.lon !== undefined
+  ).length
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return
@@ -118,7 +121,7 @@ export default function MapPage() {
       source.setData({
         type: 'FeatureCollection',
         features: Array.from(currentNodes.values())
-          .filter((n) => n.role === 2 && n.lat !== undefined && n.lon !== undefined)
+          .filter((n) => n.lat !== undefined && n.lon !== undefined)
           .map((n) => ({
             type: 'Feature' as const,
             geometry: { type: 'Point' as const, coordinates: [n.lon!, n.lat!] },
@@ -137,7 +140,7 @@ export default function MapPage() {
     if (!map.current || !map.current.isStyleLoaded()) return
 
     const features = Array.from(nodes.values())
-      .filter((node) => node.role === 2 && node.lat !== undefined && node.lon !== undefined)
+      .filter((node) => node.lat !== undefined && node.lon !== undefined)
       .map((node) => ({
         type: 'Feature' as const,
         geometry: {
@@ -181,7 +184,7 @@ export default function MapPage() {
             <h3 className={styles.panelTitle}>NorthMesh Live</h3>
             <div className={styles.networkInfo}>
               <span className={styles.nodeCount}>
-                {Array.from(nodes.values()).filter((n) => n.role === 2).length} repeaters
+                {mappableNodeCount} mapped nodes
               </span>
               <span className={styles.packetCount}>{packets.length} packets tracked</span>
             </div>
@@ -213,10 +216,12 @@ export default function MapPage() {
               </button>
             </div>
             <div className={styles.legend}>
-              <div className={styles.legendItem}>
-                <span className={styles.legendDot} style={{ background: ROLE_COLORS[2] }} />
-                <span>Repeater</span>
-              </div>
+              {Object.entries(ROLE_LABELS).map(([role, label]) => (
+                <div key={role} className={styles.legendItem}>
+                  <span className={styles.legendDot} style={{ background: ROLE_COLORS[Number(role)] }} />
+                  <span>{label}</span>
+                </div>
+              ))}
               <div className={styles.legendItem}>
                 <span className={`${styles.legendDot} ${styles.offline}`} />
                 <span>Offline</span>

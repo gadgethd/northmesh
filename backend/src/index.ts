@@ -154,6 +154,8 @@ loadNodes().then((rows) => {
 setInterval(() => {
   const now = Date.now()
   nodes.forEach((node) => {
+    if (node.is_manual) return
+
     if (now - node.last_seen > 300000) {
       if (node.is_online) {
         node.is_online = false
