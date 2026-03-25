@@ -60,6 +60,10 @@ cloudflared-creds/
 data/
 *.db
 *.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+mosquitto/passwd
 
 # Typescript incremental build
 *.tsbuildinfo

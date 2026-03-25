@@ -10,9 +10,12 @@
     "lint": "eslint . --ext ts --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
+    "@types/pg": "^8.20.0",
     "cors": "^2.8.5",
     "express": "^4.21.1",
+    "meshcore-decoder": "^0.1.7",
     "mqtt": "^5.10.1",
+    "pg": "^8.20.0",
     "redis": "^4.7.0",
     "ws": "^8.18.0"
   },

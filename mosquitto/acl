@@ -2,9 +2,8 @@
 # Topic structure: meshcore/<IATA>/<public_key>/<type>
 # Types: packets, status
 
-# Any authenticated node can publish to meshcore and ukmesh topics
+# Any authenticated node can publish to meshcore topics
 pattern write meshcore/#
-pattern write ukmesh/#
 
 # Backend can read/write everything
 user backend

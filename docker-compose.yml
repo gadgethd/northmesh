@@ -70,7 +70,7 @@ services:
     ports:
       - "9001:9001"
     volumes:
-      - ./mosquitto:/mosquitto/config
+      - ./mosquitto:/mosquitto/config:z
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
     networks:

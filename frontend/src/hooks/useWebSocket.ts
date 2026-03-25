@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react'
 import { useNodeStore, Node, Packet } from './useNodes'
 
 const WS_URL = import.meta.env.PROD
-  ? `wss://${window.location.host}/ws`
+  ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`
   : 'ws://localhost:3001/ws'
 
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 15000]

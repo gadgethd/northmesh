@@ -5,6 +5,7 @@ import { WebSocketServer } from 'ws'
 import { MQTTClient, MeshPacket, NodeStatus } from './mqtt/client.js'
 import { WebSocketManager } from './ws/server.js'
 import { apiRouter } from './api/index.js'
+import { loadNodes, upsertNode } from './db/client.js'
 
 const PORT = parseInt(process.env.PORT || '3001', 10)
 
@@ -53,7 +54,7 @@ const mqttBrokerUrl = process.env.MQTT_BROKER_URL || 'wss://mqtt.meshcore.uk:900
 
 const mqtt = new MQTTClient({
   broker: mqttBrokerUrl,
-  topics: ['meshcore/+/+/packets', 'meshcore/+/+/status', 'ukmesh/+/+/packets', 'ukmesh/+/+/status'],
+  topics: ['meshcore/+/+/packets', 'meshcore/+/+/status'],
 })
 
 mqtt.on('packet', (data) => {
@@ -74,7 +75,7 @@ mqtt.on('packet', (data) => {
 mqtt.on('status', (data) => {
   const status = data as NodeStatus
   const now = Date.now()
-  
+
   const existing = nodes.get(status.node_id)
   const isFirstSeen = !existing
 
@@ -82,6 +83,8 @@ mqtt.on('status', (data) => {
     ...status,
     last_seen: now,
     is_online: true,
+    // Only update lat/lon if the status event carries them (from a self-advert decode)
+    // otherwise preserve whatever is already in memory (from DB warmup or prior advert)
     lat: status.lat ?? existing?.lat,
     lon: status.lon ?? existing?.lon,
     role: status.role ?? existing?.role,
@@ -89,6 +92,16 @@ mqtt.on('status', (data) => {
 
   nodes.set(status.node_id, node)
   wsManager.broadcast({ type: 'node_update', data: node })
+
+  upsertNode({
+    node_id: status.node_id,
+    name: status.name,
+    role: status.role,
+    lat: node.lat,
+    lon: node.lon,
+    firmware_version: status.firmware_version,
+    hardware_model: status.model,
+  })
 
   if (isFirstSeen) {
     wsManager.broadcast({
@@ -118,7 +131,23 @@ mqtt.on('error', (err) => {
   console.error('[MQTT] Error:', (err as Error).message)
 })
 
-mqtt.connect()
+loadNodes().then((rows) => {
+  for (const row of rows) {
+    nodes.set(row.node_id, {
+      node_id: row.node_id,
+      name: row.name,
+      lat: row.lat ?? undefined,
+      lon: row.lon ?? undefined,
+      role: row.role ?? undefined,
+      firmware_version: row.firmware_version ?? undefined,
+      model: row.hardware_model ?? undefined,
+      last_seen: 0,
+      is_online: false,
+    })
+  }
+  console.log(`[DB] Loaded ${rows.length} node(s) from database`)
+  mqtt.connect()
+})
 
 setInterval(() => {
   const now = Date.now()

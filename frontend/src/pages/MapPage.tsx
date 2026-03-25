@@ -52,8 +52,6 @@ export default function MapPage() {
       attributionControl: false,
     })
 
-    map.current.addControl(new maplibregl.NavigationControl(), 'top-left')
-
     map.current.on('load', () => {
       map.current!.addSource('nodes', {
         type: 'geojson',
@@ -105,6 +103,20 @@ export default function MapPage() {
 
       map.current!.on('mouseleave', 'node-dots', () => {
         if (map.current) map.current.getCanvas().style.cursor = ''
+      })
+
+      // Populate nodes that arrived before the style finished loading
+      const currentNodes = useNodeStore.getState().nodes
+      const source = map.current!.getSource('nodes') as maplibregl.GeoJSONSource
+      source.setData({
+        type: 'FeatureCollection',
+        features: Array.from(currentNodes.values())
+          .filter((n) => n.role === 2 && n.lat !== undefined && n.lon !== undefined)
+          .map((n) => ({
+            type: 'Feature' as const,
+            geometry: { type: 'Point' as const, coordinates: [n.lon!, n.lat!] },
+            properties: { node_id: n.node_id, name: n.name, role: n.role ?? 0, is_online: n.is_online },
+          })),
       })
     })
 

@@ -1,4 +1,6 @@
 import mqtt, { MqttClient, IClientOptions } from 'mqtt'
+import { MeshCoreDecoder } from 'meshcore-decoder'
+import type { AdvertPayload } from 'meshcore-decoder'
 
 export interface MeshPacket {
   id: string
@@ -44,19 +46,6 @@ export interface NodeStatus {
   role?: number
 }
 
-export interface AdvertPayload {
-  type: number
-  publicKey: string
-  appData: {
-    name: string
-    deviceRole: number
-    location: {
-      latitude: number
-      longitude: number
-    }
-    flags: number
-  }
-}
 
 interface MQTTClientOptions {
   broker: string
@@ -75,10 +64,12 @@ export class MQTTClient {
     this.topics = options.topics
   }
 
-  private parseAdvertPayload(raw: string): AdvertPayload | null {
+  private decodeAdvert(rawHex: string): AdvertPayload | null {
     try {
-      const decoded = Buffer.from(raw, 'hex').toString('utf8')
-      return JSON.parse(decoded)
+      const result = MeshCoreDecoder.decode(rawHex)
+      const decoded = result?.payload?.decoded as AdvertPayload | undefined
+      if (decoded?.publicKey && decoded?.appData) return decoded
+      return null
     } catch {
       return null
     }
@@ -90,10 +81,10 @@ export class MQTTClient {
       if (parts.length < 4) return null
 
       const data = JSON.parse(payload.toString())
-      const inner = data.payload || {}
+      const inner = data.payload || data
 
       const rxNodeId: string = data.rx_node_id || parts[2]
-      const srcNodeId: string = data.src_node_id || inner.origin_id || ''
+      const srcNodeId: string = data.src_node_id || inner.origin_id || data.origin_id || ''
       const packetHash: string = data.packet_hash || data.hash || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
       const packetType: number = parseInt(data.packet_type) || 0
       const now = Date.now()
@@ -112,10 +103,15 @@ export class MQTTClient {
       let lon: number | undefined
       let advertPayload: AdvertPayload | null = null
 
-      const rawHex: string | undefined = inner.raw || data.raw_hex
+      const rawHex: string | undefined = inner.raw || data.raw_hex || data.raw
       if (rawHex) {
-        advertPayload = this.parseAdvertPayload(rawHex)
-        if (advertPayload?.appData?.location) {
+        advertPayload = this.decodeAdvert(rawHex)
+        // Only use location if the advert belongs to the MQTT-publishing node (pubkey matches topic)
+        if (
+          advertPayload?.appData?.hasLocation &&
+          advertPayload.appData.location &&
+          advertPayload.publicKey.toUpperCase() === rxNodeId.toUpperCase()
+        ) {
           lat = advertPayload.appData.location.latitude
           lon = advertPayload.appData.location.longitude
         }
@@ -142,12 +138,12 @@ export class MQTTClient {
         lon,
       }
 
-      // Build node update: self-advert is when src === rx (the repeater is advertising itself)
+      // Build node update — only from self-adverts (advert pubkey matches the MQTT publisher)
       let nodeUpdate: NodeStatus | undefined
-      if (advertPayload) {
+      if (advertPayload && advertPayload.publicKey.toUpperCase() === rxNodeId.toUpperCase()) {
         nodeUpdate = {
           node_id: advertPayload.publicKey,
-          name: advertPayload.appData.name,
+          name: advertPayload.appData.name ?? advertPayload.publicKey.slice(0, 8),
           role: advertPayload.appData.deviceRole,
           lat,
           lon,
