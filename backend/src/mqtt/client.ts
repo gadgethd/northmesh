@@ -64,15 +64,63 @@ export class MQTTClient {
     this.topics = options.topics
   }
 
+  private decodeAdvertPayloadOnly(rawHex: string): AdvertPayload | null {
+    try {
+      const payload = Buffer.from(rawHex, 'hex')
+      if (payload.length < 101) return null
+
+      const publicKey = payload.subarray(0, 32).toString('hex').toUpperCase()
+      const flags = payload[100]
+      const hasLocation = Boolean(flags & 0x10)
+      const hasName = Boolean(flags & 0x80)
+      let offset = 101
+
+      const advert: AdvertPayload = {
+        type: 4,
+        version: 0,
+        isValid: true,
+        publicKey,
+        timestamp: payload.readUInt32LE(32),
+        signature: payload.subarray(36, 100).toString('hex').toUpperCase(),
+        appData: {
+          flags,
+          deviceRole: flags & 0x0f,
+          hasLocation,
+          hasName,
+        },
+      }
+
+      if (hasLocation && payload.length >= offset + 8) {
+        advert.appData.location = {
+          latitude: payload.readInt32LE(offset) / 1000000,
+          longitude: payload.readInt32LE(offset + 4) / 1000000,
+        }
+        offset += 8
+      }
+
+      if (flags & 0x20) offset += 2
+      if (flags & 0x40) offset += 2
+
+      if (hasName && payload.length > offset) {
+        advert.appData.name = payload.subarray(offset).toString('utf8').replace(/\0.*$/, '').trim() || undefined
+      }
+
+      return advert
+    } catch {
+      return null
+    }
+  }
+
   private decodeAdvert(rawHex: string): AdvertPayload | null {
     try {
       const result = MeshCoreDecoder.decode(rawHex)
       const decoded = result?.payload?.decoded as AdvertPayload | undefined
       if (decoded?.publicKey && decoded?.appData) return decoded
-      return null
     } catch {
-      return null
+      // Fall through to payload-only decoding
     }
+
+    return this.decodeAdvertPayloadOnly(rawHex)
   }
 
   private parsePacket(topic: string, payload: Buffer): { packet: MeshPacket } | null {
