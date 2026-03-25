@@ -53,6 +53,12 @@ function isDisplayableNode(node: Node, useSourceFilter: boolean): boolean {
   return Boolean(node.is_manual || node.is_mqtt_node)
 }
 
+function getSourceLabel(node: Node): string {
+  if (node.is_mqtt_node) return 'MQTT Connected'
+  if (node.is_manual) return 'Manually Added'
+  return 'Unknown'
+}
+
 export default function MapPage() {
   useWebSocket()
   const mapContainer = useRef<HTMLDivElement>(null)
@@ -95,8 +101,8 @@ export default function MapPage() {
           ],
           'circle-color': [
             'case',
-            ['get', 'is_manual'], SOURCE_COLORS.manual,
             ['get', 'is_mqtt_node'], SOURCE_COLORS.mqtt,
+            ['get', 'is_manual'], SOURCE_COLORS.manual,
             '#6b7280'
           ],
           'circle-opacity': [
@@ -299,7 +305,7 @@ export default function MapPage() {
                 </div>
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Source</span>
-                  <span>{selectedNode.is_manual ? 'Manually Added' : selectedNode.is_mqtt_node ? 'MQTT Connected' : 'Unknown'}</span>
+                  <span>{getSourceLabel(selectedNode)}</span>
                 </div>
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Status</span>

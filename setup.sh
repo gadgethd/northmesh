@@ -153,7 +153,11 @@ echo ""
 echo -e "${YELLOW}[7/8] Building Docker images...${NC}"
 echo ""
 
-docker compose build
+if [ -n "${CLOUDFLARE_TUNNEL_TOKEN:-}" ]; then
+    docker compose --profile tunnel build
+else
+    docker compose build
+fi
 echo -e "${GREEN}✓ Build complete${NC}"
 
 echo ""
@@ -162,7 +166,11 @@ echo ""
 
 set -a
 source .env
-docker compose up -d
+if [ -n "${CLOUDFLARE_TUNNEL_TOKEN:-}" ]; then
+    docker compose --profile tunnel up -d
+else
+    docker compose up -d
+fi
 set +a
 echo -e "${GREEN}✓ Services started${NC}"
 
@@ -206,7 +214,7 @@ if [ -z "$TOKEN" ]; then
     echo "2. Add hostname: northmesh.co.uk → http://nginx:8080"
     echo "3. Add hostname: mqtt.northmesh.co.uk → tcp://backend:3001"
     echo "4. Run: nano .env (add CLOUDFLARE_TUNNEL_TOKEN=...)"
-    echo "5. Run: docker compose up -d"
+    echo "5. Run: docker compose --profile tunnel up -d"
     echo ""
 fi
 

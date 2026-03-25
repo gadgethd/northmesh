@@ -56,7 +56,7 @@ wait_for_service() {
 
     while true; do
         local container_id
-        container_id="$(docker compose ps -q "$service" 2>/dev/null || true)"
+        container_id="$("${compose_base[@]}" ps -q "$service" 2>/dev/null || true)"
 
         if [ -n "$container_id" ]; then
             local status
@@ -69,7 +69,7 @@ wait_for_service() {
                     ;;
                 exited|dead|unhealthy)
                     error "$service entered state: $status"
-                    docker compose logs --tail 40 "$service" || true
+                    "${compose_base[@]}" logs --tail 40 "$service" || true
                     return 1
                     ;;
             esac
@@ -77,7 +77,7 @@ wait_for_service() {
 
         if [ $(( $(date +%s) - start_ts )) -ge "$timeout" ]; then
             error "Timed out waiting for $service"
-            docker compose logs --tail 40 "$service" || true
+            "${compose_base[@]}" logs --tail 40 "$service" || true
             return 1
         fi
 
@@ -88,7 +88,7 @@ wait_for_service() {
 report_service_state() {
     local service="$1"
     local container_id
-    container_id="$(docker compose ps -q "$service" 2>/dev/null || true)"
+    container_id="$("${compose_base[@]}" ps -q "$service" 2>/dev/null || true)"
 
     if [ -z "$container_id" ]; then
         warn "$service is not running in this compose project"
@@ -104,7 +104,7 @@ report_service_state() {
             ;;
         *)
             warn "$service is $status"
-            docker compose logs --tail 20 "$service" || true
+            "${compose_base[@]}" logs --tail 20 "$service" || true
             ;;
     esac
 }
@@ -122,6 +122,11 @@ if [ -f .env ]; then
     set -a
     . ./.env
     set +a
+fi
+
+compose_base=(docker compose)
+if [ -n "${CLOUDFLARE_TUNNEL_TOKEN:-}" ]; then
+    compose_base=(docker compose --profile tunnel)
 fi
 
 info "Checking for repo updates"
@@ -168,12 +173,15 @@ else
 fi
 
 services=(timescaledb redis mosquitto backend frontend nginx)
-if [ -n "${CLOUDFLARE_TUNNEL_TOKEN:-}" ] || [ -n "$(docker compose ps -q cloudflared 2>/dev/null || true)" ]; then
+if [ -n "${CLOUDFLARE_TUNNEL_TOKEN:-}" ]; then
     services+=(cloudflared)
 fi
 
 info "Rebuilding and restarting containers"
-docker compose up -d --build --pull always --remove-orphans "${services[@]}"
+"${compose_base[@]}" up -d --build --pull always --remove-orphans "${services[@]}"
+if [ -z "${CLOUDFLARE_TUNNEL_TOKEN:-}" ]; then
+    docker compose --profile tunnel rm -sf cloudflared >/dev/null 2>&1 || true
+fi
 
 info "Waiting for core services"
 wait_for_service timescaledb 180
@@ -193,7 +201,7 @@ else
 fi
 
 echo
-docker compose ps
+"${compose_base[@]}" ps
 echo
 
 if [ "$did_pull" = "yes" ]; then

@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS nodes (
   advert_count     INTEGER NOT NULL DEFAULT 0,
   elevation_m      DOUBLE PRECISION,
   network          TEXT NOT NULL DEFAULT 'uk/north',
+  is_manual        BOOLEAN NOT NULL DEFAULT FALSE,
   location_locked  BOOLEAN NOT NULL DEFAULT FALSE,
   is_mqtt_node     BOOLEAN NOT NULL DEFAULT FALSE,
   last_predicted_online_at  TIMESTAMPTZ,

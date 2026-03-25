@@ -226,9 +226,9 @@ async function upsertManualNode(node: ManagedNode): Promise<void> {
   await db.query(
     `INSERT INTO nodes (
       node_id, name, lat, lon, role, last_seen, is_online, hardware_model,
-      firmware_version, public_key, elevation_m, network, location_locked, is_mqtt_node, created_at
+      firmware_version, public_key, elevation_m, network, is_manual, location_locked, is_mqtt_node, created_at
     )
-    VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9, $10, $11, TRUE, FALSE, NOW())
+    VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9, $10, $11, TRUE, TRUE, FALSE, NOW())
     ON CONFLICT (node_id) DO UPDATE SET
       name = EXCLUDED.name,
       lat = EXCLUDED.lat,
@@ -240,8 +240,9 @@ async function upsertManualNode(node: ManagedNode): Promise<void> {
       public_key = EXCLUDED.public_key,
       elevation_m = EXCLUDED.elevation_m,
       network = EXCLUDED.network,
+      is_manual = CASE WHEN nodes.is_mqtt_node THEN FALSE ELSE TRUE END,
       location_locked = TRUE,
-      is_mqtt_node = FALSE`,
+      is_mqtt_node = nodes.is_mqtt_node`,
     [
       node.node_id,
       node.name,

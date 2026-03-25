@@ -32,6 +32,16 @@ function formatCoordinates(lat?: number, lon?: number): string | null {
   return `${lat.toFixed(5)}, ${lon.toFixed(5)}`
 }
 
+function getSourceLabel(node: { is_manual?: boolean; is_mqtt_node?: boolean }): string | null {
+  if (node.is_mqtt_node) return 'MQTT Connected'
+  if (node.is_manual) return 'Manually Added'
+  return null
+}
+
+function getSourceClassName(node: { is_manual?: boolean; is_mqtt_node?: boolean }): string {
+  return node.is_mqtt_node ? styles.mqttTag : styles.manualTag
+}
+
 export default function NetworkPage() {
   useWebSocket()
   const { nodes, stats } = useNodeStore()
@@ -134,6 +144,7 @@ export default function NetworkPage() {
       <div className={styles.nodeList}>
         {filteredNodes.map((node) => {
           const coordinates = formatCoordinates(node.lat, node.lon)
+          const sourceLabel = getSourceLabel(node)
 
           return (
           <div key={node.node_id} className={styles.nodeCard}>
@@ -149,9 +160,9 @@ export default function NetworkPage() {
                 <span className={`${styles.statusDot} ${node.is_online ? styles.online : ''}`} />
               </div>
               <div className={styles.nodeMeta}>
-                {node.is_manual && (
-                  <span className={`${styles.metaItem} ${styles.manualTag}`}>
-                    Manually Added
+                {sourceLabel && (
+                  <span className={`${styles.metaItem} ${styles.sourceTag} ${getSourceClassName(node)}`}>
+                    {sourceLabel}
                   </span>
                 )}
                 <span className={styles.metaItem}>

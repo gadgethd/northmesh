@@ -68,6 +68,7 @@ mqtt.on('packet', (data) => {
   if (existingNode) {
     existingNode.last_seen = packet.ts
     existingNode.is_online = true
+    existingNode.is_manual = false
     existingNode.is_mqtt_node = true
     if (packet.lat !== undefined) existingNode.lat = packet.lat
     if (packet.lon !== undefined) existingNode.lon = packet.lon
@@ -111,7 +112,7 @@ mqtt.on('status', (data) => {
     ...status,
     last_seen: now,
     is_online: true,
-    is_manual: existing?.is_manual ?? false,
+    is_manual: false,
     is_mqtt_node: true,
     // Only update lat/lon if the status event carries them (from a self-advert decode)
     // otherwise preserve whatever is already in memory (from DB warmup or prior advert)

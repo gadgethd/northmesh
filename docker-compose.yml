@@ -115,6 +115,8 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:latest
+    profiles:
+      - tunnel
     command: tunnel run
     environment:
       TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
