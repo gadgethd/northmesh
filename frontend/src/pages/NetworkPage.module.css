@@ -185,6 +185,11 @@
   font-weight: 600;
 }
 
+.locationTag {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
 .nodeStats {
   display: flex;
   gap: 16px;

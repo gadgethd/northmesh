@@ -33,6 +33,11 @@ function formatLastSeen(timestamp: number): string {
   return `${Math.floor(diff / 86400000)}d ago`
 }
 
+function formatCoordinates(lat?: number, lon?: number): string | null {
+  if (lat === undefined || lon === undefined) return null
+  return `${lat.toFixed(5)}, ${lon.toFixed(5)}`
+}
+
 export default function MapPage() {
   useWebSocket()
   const mapContainer = useRef<HTMLDivElement>(null)
@@ -41,6 +46,7 @@ export default function MapPage() {
   const [showLegend, setShowLegend] = useState(true)
 
   const { nodes, packets } = useNodeStore()
+  const selectedCoordinates = selectedNode ? formatCoordinates(selectedNode.lat, selectedNode.lon) : null
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return
@@ -272,6 +278,12 @@ export default function MapPage() {
                   <span className={styles.detailLabel}>Role</span>
                   <span>{ROLE_LABELS[selectedNode.role || 0] || 'Unknown'}</span>
                 </div>
+                {selectedCoordinates && (
+                  <div className={styles.detailRow}>
+                    <span className={styles.detailLabel}>Location</span>
+                    <span className={styles.mono}>{selectedCoordinates}</span>
+                  </div>
+                )}
                 {selectedNode.model && (
                   <div className={styles.detailRow}>
                     <span className={styles.detailLabel}>Hardware</span>

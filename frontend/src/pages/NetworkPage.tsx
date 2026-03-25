@@ -27,6 +27,11 @@ function formatLastSeen(ts: number): string {
   return `${Math.floor(diff / 86400000)}d ago`
 }
 
+function formatCoordinates(lat?: number, lon?: number): string | null {
+  if (lat === undefined || lon === undefined) return null
+  return `${lat.toFixed(5)}, ${lon.toFixed(5)}`
+}
+
 export default function NetworkPage() {
   useWebSocket()
   const { nodes, stats } = useNodeStore()
@@ -127,7 +132,10 @@ export default function NetworkPage() {
       </div>
 
       <div className={styles.nodeList}>
-        {filteredNodes.map((node) => (
+        {filteredNodes.map((node) => {
+          const coordinates = formatCoordinates(node.lat, node.lon)
+
+          return (
           <div key={node.node_id} className={styles.nodeCard}>
             <div className={styles.nodeMain}>
               <div className={styles.nodeHeader}>
@@ -150,6 +158,11 @@ export default function NetworkPage() {
                   <Clock size={12} />
                   {formatLastSeen(node.last_seen)}
                 </span>
+                {coordinates && (
+                  <span className={`${styles.metaItem} ${styles.locationTag}`}>
+                    {coordinates}
+                  </span>
+                )}
                 {node.model && (
                   <span className={styles.metaItem}>{node.model}</span>
                 )}
@@ -169,7 +182,8 @@ export default function NetworkPage() {
               <code>{node.node_id.slice(0, 16)}...</code>
             </div>
           </div>
-        ))}
+          )
+        })}
 
         {filteredNodes.length === 0 && (
           <div className={styles.emptyState}>
