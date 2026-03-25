@@ -109,6 +109,28 @@
   color: var(--accent-cyan);
 }
 
+.btnDiscord {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #5865f2, #7289da);
+  color: white;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.2s ease;
+  box-shadow: 0 16px 35px rgba(88, 101, 242, 0.2);
+}
+
+.btnDiscord:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, #4752c4, #5865f2);
+  color: white;
+  box-shadow: 0 18px 38px rgba(88, 101, 242, 0.28);
+}
+
 .scrollIndicator {
   position: absolute;
   bottom: 40px;
