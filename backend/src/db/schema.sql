@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS nodes (
   advert_count     INTEGER NOT NULL DEFAULT 0,
   elevation_m      DOUBLE PRECISION,
   network          TEXT NOT NULL DEFAULT 'uk/north',
+  location_locked  BOOLEAN NOT NULL DEFAULT FALSE,
   last_predicted_online_at  TIMESTAMPTZ,
   last_path_evidence_at     TIMESTAMPTZ
 );

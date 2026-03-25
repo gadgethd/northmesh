@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { createInterface } from 'node:readline/promises'
 import { stdin as input, stdout as output } from 'node:process'
-import { db } from '../db/client.js'
+import { db, ensureNodesTable } from '../db/client.js'
 
 type ManagedNode = {
   node_id: string
@@ -19,33 +19,6 @@ type ManagedNode = {
 }
 
 const rl = createInterface({ input, output })
-
-async function ensureNodesTable(): Promise<void> {
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS nodes (
-      node_id TEXT PRIMARY KEY,
-      name TEXT,
-      lat DOUBLE PRECISION,
-      lon DOUBLE PRECISION,
-      role INTEGER,
-      last_seen TIMESTAMPTZ DEFAULT NOW(),
-      is_online BOOLEAN DEFAULT FALSE,
-      hardware_model TEXT,
-      firmware_version TEXT,
-      public_key TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      advert_count INTEGER NOT NULL DEFAULT 0,
-      elevation_m DOUBLE PRECISION,
-      network TEXT NOT NULL DEFAULT 'uk/north',
-      last_predicted_online_at TIMESTAMPTZ,
-      last_path_evidence_at TIMESTAMPTZ
-    )
-  `)
-
-  await db.query('CREATE INDEX IF NOT EXISTS idx_nodes_last_seen ON nodes (last_seen)')
-  await db.query('CREATE INDEX IF NOT EXISTS idx_nodes_is_online ON nodes (is_online)')
-  await db.query('CREATE INDEX IF NOT EXISTS idx_nodes_network ON nodes (network)')
-}
 
 function stripQuotes(value: string): string {
   if (
@@ -253,9 +226,9 @@ async function upsertManualNode(node: ManagedNode): Promise<void> {
   await db.query(
     `INSERT INTO nodes (
       node_id, name, lat, lon, role, last_seen, is_online, hardware_model,
-      firmware_version, public_key, elevation_m, network, created_at
+      firmware_version, public_key, elevation_m, network, location_locked, created_at
     )
-    VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9, $10, $11, NOW())
+    VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9, $10, $11, TRUE, NOW())
     ON CONFLICT (node_id) DO UPDATE SET
       name = EXCLUDED.name,
       lat = EXCLUDED.lat,
@@ -266,7 +239,8 @@ async function upsertManualNode(node: ManagedNode): Promise<void> {
       firmware_version = EXCLUDED.firmware_version,
       public_key = EXCLUDED.public_key,
       elevation_m = EXCLUDED.elevation_m,
-      network = EXCLUDED.network`,
+      network = EXCLUDED.network,
+      location_locked = TRUE`,
     [
       node.node_id,
       node.name,

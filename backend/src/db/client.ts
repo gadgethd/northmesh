@@ -4,6 +4,46 @@ export const db = new Pool({
   connectionString: process.env.DATABASE_URL,
 })
 
+let nodesSchemaReady: Promise<void> | null = null
+
+export async function ensureNodesTable(): Promise<void> {
+  if (!nodesSchemaReady) {
+    nodesSchemaReady = (async () => {
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS nodes (
+          node_id TEXT PRIMARY KEY,
+          name TEXT,
+          lat DOUBLE PRECISION,
+          lon DOUBLE PRECISION,
+          role INTEGER,
+          last_seen TIMESTAMPTZ DEFAULT NOW(),
+          is_online BOOLEAN DEFAULT FALSE,
+          hardware_model TEXT,
+          firmware_version TEXT,
+          public_key TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          advert_count INTEGER NOT NULL DEFAULT 0,
+          elevation_m DOUBLE PRECISION,
+          network TEXT NOT NULL DEFAULT 'uk/north',
+          last_predicted_online_at TIMESTAMPTZ,
+          last_path_evidence_at TIMESTAMPTZ,
+          location_locked BOOLEAN NOT NULL DEFAULT FALSE
+        )
+      `)
+
+      await db.query('ALTER TABLE nodes ADD COLUMN IF NOT EXISTS location_locked BOOLEAN NOT NULL DEFAULT FALSE')
+      await db.query('CREATE INDEX IF NOT EXISTS idx_nodes_last_seen ON nodes (last_seen)')
+      await db.query('CREATE INDEX IF NOT EXISTS idx_nodes_is_online ON nodes (is_online)')
+      await db.query('CREATE INDEX IF NOT EXISTS idx_nodes_network ON nodes (network)')
+    })().catch((error) => {
+      nodesSchemaReady = null
+      throw error
+    })
+  }
+
+  await nodesSchemaReady
+}
+
 export async function loadNodes(): Promise<Array<{
   node_id: string
   name: string
@@ -14,11 +54,13 @@ export async function loadNodes(): Promise<Array<{
   hardware_model?: string
 }>> {
   try {
+    await ensureNodesTable()
     const result = await db.query(
       'SELECT node_id, name, lat, lon, role, firmware_version, hardware_model FROM nodes'
     )
     return result.rows
-  } catch {
+  } catch (error) {
+    console.error('[DB] Failed to load nodes:', error)
     return []
   }
 }
@@ -45,6 +87,7 @@ export async function upsertNode(node: {
   hardware_model?: string
 }): Promise<void> {
   try {
+    await ensureNodesTable()
     await db.query(
       `INSERT INTO nodes (node_id, name, role, lat, lon, firmware_version, hardware_model, last_seen, is_online)
        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), TRUE)
@@ -59,7 +102,7 @@ export async function upsertNode(node: {
          is_online = TRUE`,
       [node.node_id, node.name, node.role, node.lat ?? null, node.lon ?? null, node.firmware_version ?? null, node.hardware_model ?? null]
     )
-  } catch {
-    // non-fatal
+  } catch (error) {
+    console.error(`[DB] Failed to upsert node ${node.node_id}:`, error)
   }
 }
