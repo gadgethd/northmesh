@@ -20,6 +20,33 @@ type ManagedNode = {
 
 const rl = createInterface({ input, output })
 
+async function ensureNodesTable(): Promise<void> {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS nodes (
+      node_id TEXT PRIMARY KEY,
+      name TEXT,
+      lat DOUBLE PRECISION,
+      lon DOUBLE PRECISION,
+      role INTEGER,
+      last_seen TIMESTAMPTZ DEFAULT NOW(),
+      is_online BOOLEAN DEFAULT FALSE,
+      hardware_model TEXT,
+      firmware_version TEXT,
+      public_key TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      advert_count INTEGER NOT NULL DEFAULT 0,
+      elevation_m DOUBLE PRECISION,
+      network TEXT NOT NULL DEFAULT 'uk/north',
+      last_predicted_online_at TIMESTAMPTZ,
+      last_path_evidence_at TIMESTAMPTZ
+    )
+  `)
+
+  await db.query('CREATE INDEX IF NOT EXISTS idx_nodes_last_seen ON nodes (last_seen)')
+  await db.query('CREATE INDEX IF NOT EXISTS idx_nodes_is_online ON nodes (is_online)')
+  await db.query('CREATE INDEX IF NOT EXISTS idx_nodes_network ON nodes (network)')
+}
+
 function stripQuotes(value: string): string {
   if (
     (value.startsWith('"') && value.endsWith('"')) ||
@@ -279,6 +306,8 @@ function printNodeSummary(node: ManagedNode): void {
 }
 
 async function handleAdd(): Promise<void> {
+  await ensureNodesTable()
+
   console.log('')
   console.log('Add or update a repeater that is not publishing to MQTT.')
   console.log('')
@@ -351,6 +380,8 @@ async function handleAdd(): Promise<void> {
 }
 
 async function handleRemove(): Promise<void> {
+  await ensureNodesTable()
+
   console.log('')
   console.log('Remove a node from the database.')
   console.log('')
