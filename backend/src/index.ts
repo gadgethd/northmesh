@@ -7,6 +7,13 @@ import { WebSocketManager } from './ws/server.js'
 import { apiRouter } from './api/index.js'
 import { loadNodes, upsertNode } from './db/client.js'
 
+type RuntimeNode = NodeStatus & {
+  last_seen: number
+  is_online: boolean
+  is_manual?: boolean
+  is_mqtt_node?: boolean
+}
+
 const PORT = parseInt(process.env.PORT || '3001', 10)
 
 const app = express()
@@ -36,7 +43,7 @@ const wsManager = new WebSocketManager(wss, (send) => {
   })
 })
 
-const nodes = new Map<string, NodeStatus & { last_seen: number; is_online: boolean; is_manual?: boolean; is_mqtt_node?: boolean }>()
+const nodes = new Map<string, RuntimeNode>()
 let packets: MeshPacket[] = []
 
 const WINDOW_24H = 24 * 60 * 60 * 1000
@@ -48,6 +55,80 @@ function packets24h(): number {
   if (i > 0) packetTimestamps = packetTimestamps.slice(i)
   else if (i === -1) packetTimestamps = []
   return packetTimestamps.length
+}
+
+function broadcastInit(): void {
+  wsManager.broadcast({
+    type: 'init',
+    data: {
+      nodes: Array.from(nodes.values()),
+      packets: packets.slice(-100),
+      packets_24h: packets24h(),
+    },
+  })
+}
+
+function nodeFromRow(row: Awaited<ReturnType<typeof loadNodes>>[number]): RuntimeNode {
+  return {
+    node_id: row.node_id,
+    name: row.name,
+    lat: row.lat ?? undefined,
+    lon: row.lon ?? undefined,
+    role: row.role ?? undefined,
+    firmware_version: row.firmware_version ?? undefined,
+    model: row.hardware_model ?? undefined,
+    is_manual: row.is_manual ?? false,
+    is_mqtt_node: row.is_mqtt_node ?? false,
+    last_seen: row.last_seen ? new Date(row.last_seen).getTime() : 0,
+    is_online: row.is_online ?? false,
+  }
+}
+
+async function syncNodesFromDatabase(): Promise<void> {
+  const rows = await loadNodes()
+  const dbNodeIds = new Set(rows.map((row) => row.node_id))
+  let changed = false
+
+  for (const row of rows) {
+    const incoming = nodeFromRow(row)
+    const existing = nodes.get(row.node_id)
+
+    if (!existing) {
+      nodes.set(row.node_id, incoming)
+      changed = true
+      continue
+    }
+
+    const merged: RuntimeNode = {
+      ...existing,
+      name: incoming.name || existing.name,
+      lat: incoming.lat ?? existing.lat,
+      lon: incoming.lon ?? existing.lon,
+      role: incoming.role ?? existing.role,
+      firmware_version: incoming.firmware_version ?? existing.firmware_version,
+      model: incoming.model ?? existing.model,
+      is_manual: incoming.is_manual ?? existing.is_manual ?? false,
+      is_mqtt_node: incoming.is_mqtt_node ?? existing.is_mqtt_node ?? false,
+      last_seen: Math.max(existing.last_seen, incoming.last_seen),
+      is_online: incoming.is_manual ? incoming.is_online : existing.is_online || incoming.is_online,
+    }
+
+    if (JSON.stringify(existing) !== JSON.stringify(merged)) {
+      nodes.set(row.node_id, merged)
+      changed = true
+    }
+  }
+
+  for (const [nodeId, node] of nodes.entries()) {
+    if (node.is_manual && !dbNodeIds.has(nodeId)) {
+      nodes.delete(nodeId)
+      changed = true
+    }
+  }
+
+  if (changed) {
+    broadcastInit()
+  }
 }
 
 const mqttBrokerUrl = process.env.MQTT_BROKER_URL || 'wss://mqtt.meshcore.uk:9001'
@@ -108,7 +189,7 @@ mqtt.on('status', (data) => {
   const existing = nodes.get(status.node_id)
   const isFirstSeen = !existing
 
-  const node: NodeStatus & { last_seen: number; is_online: boolean; is_manual?: boolean; is_mqtt_node?: boolean } = {
+  const node: RuntimeNode = {
     ...status,
     last_seen: now,
     is_online: true,
@@ -136,50 +217,21 @@ mqtt.on('status', (data) => {
   })
 
   if (isFirstSeen) {
-    wsManager.broadcast({
-      type: 'init',
-      data: {
-        nodes: Array.from(nodes.values()),
-        packets: packets.slice(-100),
-        packets_24h: packets24h(),
-      },
-    })
+    broadcastInit()
   }
 })
 
 mqtt.on('connect', () => {
   console.log('[MQTT] Connected to broker')
-  wsManager.broadcast({
-    type: 'init',
-    data: {
-      nodes: Array.from(nodes.values()),
-      packets: packets.slice(-100),
-      packets_24h: packets24h(),
-    },
-  })
+  broadcastInit()
 })
 
 mqtt.on('error', (err) => {
   console.error('[MQTT] Error:', (err as Error).message)
 })
 
-loadNodes().then((rows) => {
-  for (const row of rows) {
-    nodes.set(row.node_id, {
-      node_id: row.node_id,
-      name: row.name,
-      lat: row.lat ?? undefined,
-      lon: row.lon ?? undefined,
-      role: row.role ?? undefined,
-      firmware_version: row.firmware_version ?? undefined,
-      model: row.hardware_model ?? undefined,
-      is_manual: row.is_manual ?? false,
-      is_mqtt_node: row.is_mqtt_node ?? false,
-      last_seen: row.last_seen ? new Date(row.last_seen).getTime() : 0,
-      is_online: row.is_online ?? false,
-    })
-  }
-  console.log(`[DB] Loaded ${rows.length} node(s) from database`)
+syncNodesFromDatabase().then(() => {
+  console.log(`[DB] Loaded ${nodes.size} node(s) from database`)
   mqtt.connect()
 })
 
@@ -197,6 +249,12 @@ setInterval(() => {
   })
   wsManager.broadcast({ type: 'stats', data: { packets_today: packets24h() } })
 }, 60000)
+
+setInterval(() => {
+  syncNodesFromDatabase().catch((error) => {
+    console.error('[DB] Failed to sync nodes from database:', error)
+  })
+}, 15000)
 
 server.listen(PORT, () => {
   console.log(`[Server] Running on port ${PORT}`)
