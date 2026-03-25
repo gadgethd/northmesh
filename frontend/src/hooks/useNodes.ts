@@ -11,6 +11,7 @@ export interface Node {
   lat?: number
   lon?: number
   is_manual?: boolean
+  is_mqtt_node?: boolean
   last_seen: number
   is_online: boolean
   stats?: {

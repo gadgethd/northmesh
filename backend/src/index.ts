@@ -36,7 +36,7 @@ const wsManager = new WebSocketManager(wss, (send) => {
   })
 })
 
-const nodes = new Map<string, NodeStatus & { last_seen: number; is_online: boolean; is_manual?: boolean }>()
+const nodes = new Map<string, NodeStatus & { last_seen: number; is_online: boolean; is_manual?: boolean; is_mqtt_node?: boolean }>()
 let packets: MeshPacket[] = []
 
 const WINDOW_24H = 24 * 60 * 60 * 1000
@@ -68,8 +68,36 @@ mqtt.on('packet', (data) => {
   if (existingNode) {
     existingNode.last_seen = packet.ts
     existingNode.is_online = true
+    existingNode.is_mqtt_node = true
+    if (packet.lat !== undefined) existingNode.lat = packet.lat
+    if (packet.lon !== undefined) existingNode.lon = packet.lon
     wsManager.broadcast({ type: 'node_update', data: existingNode })
+  } else {
+    const node = {
+      node_id: packet.rxNodeId,
+      name: packet.rxNodeId.slice(0, 8),
+      role: 2,
+      lat: packet.lat,
+      lon: packet.lon,
+      last_seen: packet.ts,
+      is_online: true,
+      is_manual: false,
+      is_mqtt_node: true,
+    }
+    nodes.set(packet.rxNodeId, node)
+    wsManager.broadcast({ type: 'node_update', data: node })
   }
+
+  upsertNode({
+    node_id: packet.rxNodeId,
+    name: existingNode?.name ?? packet.rxNodeId.slice(0, 8),
+    role: existingNode?.role ?? 2,
+    lat: packet.lat,
+    lon: packet.lon,
+    firmware_version: existingNode?.firmware_version,
+    hardware_model: existingNode?.model,
+    is_mqtt_node: true,
+  })
 })
 
 mqtt.on('status', (data) => {
@@ -79,11 +107,12 @@ mqtt.on('status', (data) => {
   const existing = nodes.get(status.node_id)
   const isFirstSeen = !existing
 
-  const node: NodeStatus & { last_seen: number; is_online: boolean; is_manual?: boolean } = {
+  const node: NodeStatus & { last_seen: number; is_online: boolean; is_manual?: boolean; is_mqtt_node?: boolean } = {
     ...status,
     last_seen: now,
     is_online: true,
     is_manual: existing?.is_manual ?? false,
+    is_mqtt_node: true,
     // Only update lat/lon if the status event carries them (from a self-advert decode)
     // otherwise preserve whatever is already in memory (from DB warmup or prior advert)
     lat: status.lat ?? existing?.lat,
@@ -102,6 +131,7 @@ mqtt.on('status', (data) => {
     lon: node.lon,
     firmware_version: status.firmware_version,
     hardware_model: status.model,
+    is_mqtt_node: true,
   })
 
   if (isFirstSeen) {
@@ -143,6 +173,7 @@ loadNodes().then((rows) => {
       firmware_version: row.firmware_version ?? undefined,
       model: row.hardware_model ?? undefined,
       is_manual: row.is_manual ?? false,
+      is_mqtt_node: row.is_mqtt_node ?? false,
       last_seen: row.last_seen ? new Date(row.last_seen).getTime() : 0,
       is_online: row.is_online ?? false,
     })

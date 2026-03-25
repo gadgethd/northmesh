@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS nodes (
   elevation_m      DOUBLE PRECISION,
   network          TEXT NOT NULL DEFAULT 'uk/north',
   location_locked  BOOLEAN NOT NULL DEFAULT FALSE,
+  is_mqtt_node     BOOLEAN NOT NULL DEFAULT FALSE,
   last_predicted_online_at  TIMESTAMPTZ,
   last_path_evidence_at     TIMESTAMPTZ
 );

@@ -17,6 +17,11 @@ const ROLE_COLORS: Record<number, string> = {
   4: '#34f5a0',
 }
 
+const SOURCE_COLORS = {
+  mqtt: '#00d4ff',
+  manual: '#f59e0b',
+} as const
+
 const ROLE_LABELS: Record<number, string> = {
   1: 'ChatNode',
   2: 'Repeater',
@@ -48,7 +53,7 @@ export default function MapPage() {
   const { nodes, packets } = useNodeStore()
   const selectedCoordinates = selectedNode ? formatCoordinates(selectedNode.lat, selectedNode.lon) : null
   const mappableNodeCount = Array.from(nodes.values()).filter(
-    (node) => node.lat !== undefined && node.lon !== undefined
+    (node) => (node.is_manual || node.is_mqtt_node) && node.lat !== undefined && node.lon !== undefined
   ).length
 
   useEffect(() => {
@@ -78,11 +83,9 @@ export default function MapPage() {
             6, 3, 9, 4, 11, 5, 13, 7, 16, 10
           ],
           'circle-color': [
-            'match', ['get', 'role'],
-            1, ROLE_COLORS[1],
-            2, ROLE_COLORS[2],
-            3, ROLE_COLORS[3],
-            4, ROLE_COLORS[4],
+            'case',
+            ['get', 'is_manual'], SOURCE_COLORS.manual,
+            ['get', 'is_mqtt_node'], SOURCE_COLORS.mqtt,
             '#6b7280'
           ],
           'circle-opacity': [
@@ -121,11 +124,18 @@ export default function MapPage() {
       source.setData({
         type: 'FeatureCollection',
         features: Array.from(currentNodes.values())
-          .filter((n) => n.lat !== undefined && n.lon !== undefined)
+          .filter((n) => (n.is_manual || n.is_mqtt_node) && n.lat !== undefined && n.lon !== undefined)
           .map((n) => ({
             type: 'Feature' as const,
             geometry: { type: 'Point' as const, coordinates: [n.lon!, n.lat!] },
-            properties: { node_id: n.node_id, name: n.name, role: n.role ?? 0, is_online: n.is_online },
+            properties: {
+              node_id: n.node_id,
+              name: n.name,
+              role: n.role ?? 0,
+              is_online: n.is_online,
+              is_manual: n.is_manual ?? false,
+              is_mqtt_node: n.is_mqtt_node ?? false,
+            },
           })),
       })
     })
@@ -140,7 +150,7 @@ export default function MapPage() {
     if (!map.current || !map.current.isStyleLoaded()) return
 
     const features = Array.from(nodes.values())
-      .filter((node) => node.lat !== undefined && node.lon !== undefined)
+      .filter((node) => (node.is_manual || node.is_mqtt_node) && node.lat !== undefined && node.lon !== undefined)
       .map((node) => ({
         type: 'Feature' as const,
         geometry: {
@@ -152,6 +162,8 @@ export default function MapPage() {
           name: node.name,
           role: node.role ?? 0,
           is_online: node.is_online,
+          is_manual: node.is_manual ?? false,
+          is_mqtt_node: node.is_mqtt_node ?? false,
         },
       }))
 
@@ -216,12 +228,14 @@ export default function MapPage() {
               </button>
             </div>
             <div className={styles.legend}>
-              {Object.entries(ROLE_LABELS).map(([role, label]) => (
-                <div key={role} className={styles.legendItem}>
-                  <span className={styles.legendDot} style={{ background: ROLE_COLORS[Number(role)] }} />
-                  <span>{label}</span>
-                </div>
-              ))}
+              <div className={styles.legendItem}>
+                <span className={styles.legendDot} style={{ background: SOURCE_COLORS.mqtt }} />
+                <span>MQTT Connected</span>
+              </div>
+              <div className={styles.legendItem}>
+                <span className={styles.legendDot} style={{ background: SOURCE_COLORS.manual }} />
+                <span>Manually Added</span>
+              </div>
               <div className={styles.legendItem}>
                 <span className={`${styles.legendDot} ${styles.offline}`} />
                 <span>Offline</span>
@@ -263,12 +277,10 @@ export default function MapPage() {
                   </span>
                   <span className={styles.nodeName}>{selectedNode.name}</span>
                 </div>
-                {selectedNode.is_manual && (
-                  <div className={styles.detailRow}>
-                    <span className={styles.detailLabel}>Source</span>
-                    <span>Manually Added</span>
-                  </div>
-                )}
+                <div className={styles.detailRow}>
+                  <span className={styles.detailLabel}>Source</span>
+                  <span>{selectedNode.is_manual ? 'Manually Added' : selectedNode.is_mqtt_node ? 'MQTT Connected' : 'Unknown'}</span>
+                </div>
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Status</span>
                   <span className={`${styles.statusBadge} ${selectedNode.is_online ? styles.online : styles.offline}`}>

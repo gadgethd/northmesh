@@ -75,7 +75,7 @@ export class MQTTClient {
     }
   }
 
-  private parsePacket(topic: string, payload: Buffer): { packet: MeshPacket; nodeUpdate?: NodeStatus } | null {
+  private parsePacket(topic: string, payload: Buffer): { packet: MeshPacket } | null {
     try {
       const parts = topic.split('/')
       if (parts.length < 4) return null
@@ -138,36 +138,7 @@ export class MQTTClient {
         lon,
       }
 
-      // Build node update — only from self-adverts (advert pubkey matches the MQTT publisher)
-      let nodeUpdate: NodeStatus | undefined
-      if (advertPayload && advertPayload.publicKey.toUpperCase() === rxNodeId.toUpperCase()) {
-        nodeUpdate = {
-          node_id: advertPayload.publicKey,
-          name: advertPayload.appData.name ?? advertPayload.publicKey.slice(0, 8),
-          role: advertPayload.appData.deviceRole,
-          lat,
-          lon,
-        }
-      } else if (rxNodeId && rxNodeId === srcNodeId) {
-        // Self-advert: the observer IS the source — this is the repeater's own beacon
-        nodeUpdate = {
-          node_id: rxNodeId,
-          name: inner.origin || rxNodeId.slice(0, 8),
-          role: 2,
-          lat,
-          lon,
-        }
-        console.log(`[MQTT] Self-advert from ${inner.origin || rxNodeId} raw: ${rawHex?.slice(0, 60)}`)
-      } else if (inner.origin_id) {
-        nodeUpdate = {
-          node_id: inner.origin_id,
-          name: inner.origin || inner.origin_id.slice(0, 8),
-          lat,
-          lon,
-        }
-      }
-
-      return { packet, nodeUpdate }
+      return { packet }
     } catch (e) {
       console.error('[MQTT] parsePacket error:', e)
       return null
@@ -249,9 +220,6 @@ export class MQTTClient {
         const result = this.parsePacket(topic, payload)
         if (result) {
           this.emit('packet', result.packet)
-          if (result.nodeUpdate) {
-            this.emit('status', result.nodeUpdate)
-          }
         }
       } else if (topic.endsWith('/status')) {
         const status = this.parseStatus(topic, payload)
