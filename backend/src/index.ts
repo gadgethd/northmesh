@@ -36,7 +36,7 @@ const wsManager = new WebSocketManager(wss, (send) => {
   })
 })
 
-const nodes = new Map<string, NodeStatus & { last_seen: number; is_online: boolean }>()
+const nodes = new Map<string, NodeStatus & { last_seen: number; is_online: boolean; is_manual?: boolean }>()
 let packets: MeshPacket[] = []
 
 const WINDOW_24H = 24 * 60 * 60 * 1000
@@ -79,10 +79,11 @@ mqtt.on('status', (data) => {
   const existing = nodes.get(status.node_id)
   const isFirstSeen = !existing
 
-  const node: NodeStatus & { last_seen: number; is_online: boolean } = {
+  const node: NodeStatus & { last_seen: number; is_online: boolean; is_manual?: boolean } = {
     ...status,
     last_seen: now,
     is_online: true,
+    is_manual: existing?.is_manual ?? false,
     // Only update lat/lon if the status event carries them (from a self-advert decode)
     // otherwise preserve whatever is already in memory (from DB warmup or prior advert)
     lat: status.lat ?? existing?.lat,
@@ -141,8 +142,9 @@ loadNodes().then((rows) => {
       role: row.role ?? undefined,
       firmware_version: row.firmware_version ?? undefined,
       model: row.hardware_model ?? undefined,
-      last_seen: 0,
-      is_online: false,
+      is_manual: row.is_manual ?? false,
+      last_seen: row.last_seen ? new Date(row.last_seen).getTime() : 0,
+      is_online: row.is_online ?? false,
     })
   }
   console.log(`[DB] Loaded ${rows.length} node(s) from database`)

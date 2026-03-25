@@ -52,11 +52,16 @@ export async function loadNodes(): Promise<Array<{
   role?: number
   firmware_version?: string
   hardware_model?: string
+  last_seen?: string | Date
+  is_online?: boolean
+  is_manual?: boolean
 }>> {
   try {
     await ensureNodesTable()
     const result = await db.query(
-      'SELECT node_id, name, lat, lon, role, firmware_version, hardware_model FROM nodes'
+      `SELECT node_id, name, lat, lon, role, firmware_version, hardware_model, last_seen, is_online,
+              location_locked AS is_manual
+       FROM nodes`
     )
     return result.rows
   } catch (error) {

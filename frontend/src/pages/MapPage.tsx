@@ -25,6 +25,7 @@ const ROLE_LABELS: Record<number, string> = {
 }
 
 function formatLastSeen(timestamp: number): string {
+  if (!timestamp || timestamp <= 0) return 'Manual entry'
   const diff = Date.now() - timestamp
   if (diff < 60000) return 'Just now'
   if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
@@ -251,6 +252,12 @@ export default function MapPage() {
                   </span>
                   <span className={styles.nodeName}>{selectedNode.name}</span>
                 </div>
+                {selectedNode.is_manual && (
+                  <div className={styles.detailRow}>
+                    <span className={styles.detailLabel}>Source</span>
+                    <span>Manually Added</span>
+                  </div>
+                )}
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Status</span>
                   <span className={`${styles.statusBadge} ${selectedNode.is_online ? styles.online : styles.offline}`}>

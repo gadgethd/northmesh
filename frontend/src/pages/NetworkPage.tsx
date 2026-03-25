@@ -19,6 +19,7 @@ const ROLE_COLORS: Record<number, string> = {
 }
 
 function formatLastSeen(ts: number): string {
+  if (!ts || ts <= 0) return 'Manual entry'
   const diff = Date.now() - ts
   if (diff < 60000) return 'Just now'
   if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
@@ -140,6 +141,11 @@ export default function NetworkPage() {
                 <span className={`${styles.statusDot} ${node.is_online ? styles.online : ''}`} />
               </div>
               <div className={styles.nodeMeta}>
+                {node.is_manual && (
+                  <span className={`${styles.metaItem} ${styles.manualTag}`}>
+                    Manually Added
+                  </span>
+                )}
                 <span className={styles.metaItem}>
                   <Clock size={12} />
                   {formatLastSeen(node.last_seen)}

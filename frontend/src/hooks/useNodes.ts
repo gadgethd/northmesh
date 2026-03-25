@@ -10,6 +10,7 @@ export interface Node {
   role?: number
   lat?: number
   lon?: number
+  is_manual?: boolean
   last_seen: number
   is_online: boolean
   stats?: {
