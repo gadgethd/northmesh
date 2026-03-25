@@ -57,6 +57,16 @@ cd northmesh
 ./setup.sh
 ```
 
+### Updating Containers
+
+Use the repo updater to pull the latest safe changes, rebuild the stack, and wait for the core services to come back:
+
+```bash
+./update-containers.sh
+```
+
+The updater will skip `git pull` if the worktree has local code changes that would make an automatic fast-forward unsafe. Local-only secrets such as `.env` and `mosquitto/passwd` are preserved.
+
 ## Configuration
 
 ### Environment Variables
