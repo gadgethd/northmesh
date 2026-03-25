@@ -43,6 +43,16 @@ function formatCoordinates(lat?: number, lon?: number): string | null {
   return `${lat.toFixed(5)}, ${lon.toFixed(5)}`
 }
 
+function hasSourceMetadata(node: Node): boolean {
+  return node.is_manual !== undefined || node.is_mqtt_node !== undefined
+}
+
+function isDisplayableNode(node: Node, useSourceFilter: boolean): boolean {
+  if (node.lat === undefined || node.lon === undefined) return false
+  if (!useSourceFilter) return true
+  return Boolean(node.is_manual || node.is_mqtt_node)
+}
+
 export default function MapPage() {
   useWebSocket()
   const mapContainer = useRef<HTMLDivElement>(null)
@@ -52,8 +62,9 @@ export default function MapPage() {
 
   const { nodes, packets } = useNodeStore()
   const selectedCoordinates = selectedNode ? formatCoordinates(selectedNode.lat, selectedNode.lon) : null
+  const hasAnySourceMetadata = Array.from(nodes.values()).some(hasSourceMetadata)
   const mappableNodeCount = Array.from(nodes.values()).filter(
-    (node) => (node.is_manual || node.is_mqtt_node) && node.lat !== undefined && node.lon !== undefined
+    (node) => isDisplayableNode(node, hasAnySourceMetadata)
   ).length
 
   useEffect(() => {
@@ -124,7 +135,7 @@ export default function MapPage() {
       source.setData({
         type: 'FeatureCollection',
         features: Array.from(currentNodes.values())
-          .filter((n) => (n.is_manual || n.is_mqtt_node) && n.lat !== undefined && n.lon !== undefined)
+          .filter((n) => isDisplayableNode(n, hasAnySourceMetadata))
           .map((n) => ({
             type: 'Feature' as const,
             geometry: { type: 'Point' as const, coordinates: [n.lon!, n.lat!] },
@@ -150,7 +161,7 @@ export default function MapPage() {
     if (!map.current || !map.current.isStyleLoaded()) return
 
     const features = Array.from(nodes.values())
-      .filter((node) => (node.is_manual || node.is_mqtt_node) && node.lat !== undefined && node.lon !== undefined)
+      .filter((node) => isDisplayableNode(node, hasAnySourceMetadata))
       .map((node) => ({
         type: 'Feature' as const,
         geometry: {
@@ -228,14 +239,23 @@ export default function MapPage() {
               </button>
             </div>
             <div className={styles.legend}>
-              <div className={styles.legendItem}>
-                <span className={styles.legendDot} style={{ background: SOURCE_COLORS.mqtt }} />
-                <span>MQTT Connected</span>
-              </div>
-              <div className={styles.legendItem}>
-                <span className={styles.legendDot} style={{ background: SOURCE_COLORS.manual }} />
-                <span>Manually Added</span>
-              </div>
+              {hasAnySourceMetadata ? (
+                <>
+                  <div className={styles.legendItem}>
+                    <span className={styles.legendDot} style={{ background: SOURCE_COLORS.mqtt }} />
+                    <span>MQTT Connected</span>
+                  </div>
+                  <div className={styles.legendItem}>
+                    <span className={styles.legendDot} style={{ background: SOURCE_COLORS.manual }} />
+                    <span>Manually Added</span>
+                  </div>
+                </>
+              ) : (
+                <div className={styles.legendItem}>
+                  <span className={styles.legendDot} style={{ background: SOURCE_COLORS.mqtt }} />
+                  <span>Located Node</span>
+                </div>
+              )}
               <div className={styles.legendItem}>
                 <span className={`${styles.legendDot} ${styles.offline}`} />
                 <span>Offline</span>
